@@ -1,5 +1,4 @@
 /* Constants */
-
 :root {
     --icon-size: 24px;
     --primary-color: #4285f4;
@@ -8,7 +7,6 @@
 }
 
 /* Layout */
-
 html {
     height: 100%;
 }
@@ -62,24 +60,145 @@ body {
     bottom: 0;
 }
 
-header {
+.top-right {
     position: absolute;
     top: 0;
     left: 0;
     right: 0;
-    height: 56px;
+    display: flex;
+    flex-direction: row-reverse;
+}
+
+header {
+    width: 100%;
+    max-width: 1080px;
     align-items: center;
-    padding: 16px;
+    padding: 5px 10px;
     box-sizing: border-box;
+    display: flex;
+    background: var(--pub-bg-color);
+}
+
+#room-title {
+    margin: 0 5px;
+    flex-grow: 1;
+    font-weight: bold;
+    font-size: 16px;
+}
+
+#content {
+    margin: 56px auto 37px auto;
+    width: 100%;
+}
+
+#chat-room-box {
+    width: 100%;
+    max-width: 1080px;
+    height: 100%;
+    overflow: auto;
+    box-sizing: border-box;
+    border: 2px solid var(--pub-bg-color);
+}
+
+#chat-room-content {
+    width: 100%;
+    overflow-y: auto;
+}
+
+.chat-room-tip {
+    width: 100%;
+    height: 18px;
+    font-style: normal;
+    font-weight: 400;
+    font-size: 12px;
+    line-height: 18px;
+    text-align: center;
+    color: #666;
+    margin: 2px;
+}
+
+.chat-room-other {
+    display: flex;
+    margin: 10px 0;
+    padding: 0px 50px 0px 10px;
+}
+
+.chat-room-me {
+    display: flex;
+    flex-direction: row-reverse;
+    margin: 10px 0;
+    padding: 0px 10px 0px 50px;
+}
+
+.chat-room-msg {
+    border-radius: 8px;
+    padding: 2px 10px;
+    background: var(--msg-bg-color);
+    font-size: 16px;
+    line-height: 28px;
+    font-weight: normal;
+    color: #000;
+}
+
+.chat-room-msg-name {
+    font-weight: bold;
+    color: #D02129;
+}
+
+.chat-room-msg-text {
+    white-space: pre-wrap;
+}
+
+footer {
+    width: 100%;
+    max-width: 1080px;
+}
+
+#pub-msg-box {
+    width: 100%;
+    padding: 0 0 5px 0;
+    background: var(--pub-bg-color);
+}
+
+#pub-msg-content {
+    width: 100%;
+    display: flex;
+    align-items: center;
+}
+
+#pub-msg-text {
+    flex-grow: 1;
+    margin-left: 10px;
+}
+
+#pub-msg-button {
+    width: 80px;
+    min-width: 80px;
+    height: 40px;
+    margin: 10px;
+    background: #06c160;
+    color: white;
+    font-weight: bold;
+    font-size: 18px;
+    border-radius: 12px;
+    display: inline-block;
+    border-style: none;
+    text-shadow: none;
+    -webkit-appearance: none;
+    -webkit-user-select: text;
+    outline: transparent none 0;
+    box-shadow: none;
+}
+
+footer .font-body2 {
+    color: var(--primary-color);
 }
 
 [hidden] {
     display: none !important;
 }
 
-
 /* Typography */
-
 body {
     font-family: -apple-system, BlinkMacSystemFont, Roboto, "Segoe UI", Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
     -webkit-font-smoothing: antialiased;
@@ -133,20 +252,14 @@ a {
     cursor: pointer;
 }
 
-
-
 /* Icons */
-
 .icon {
     width: var(--icon-size);
     height: var(--icon-size);
     fill: currentColor;
 }
 
-
-
 /* Shadows */
-
 [shadow="1"] {
     box-shadow: 0 3px 4px 0 rgba(0, 0, 0, 0.14),
         0 1px 8px 0 rgba(0, 0, 0, 0.12),
@@ -159,11 +272,7 @@ a {
         0 2px 4px -1px rgba(0, 0, 0, 0.4);
 }
 
-
-
-
 /* Animations */
-
 @keyframes fade-in {
     0% {
         opacity: 0;
@@ -171,13 +280,15 @@ a {
 }
 
 /* Main Header */
-
 body>header a {
     margin-left: 8px;
 }
 
-/* Peers List */
+x-dialog {
+    z-index: 999;
+}
 
+/* Peers List */
 x-peers {
     width: 100%;
     overflow: hidden;
@@ -186,7 +297,6 @@ x-peers {
 }
 
 /* Empty Peers List */
-
 x-no-peers {
     padding: 8px;
     text-align: center;
@@ -205,10 +315,7 @@ x-peers:not(:empty)+x-no-peers {
     display: none;
 }
 
-
-
 /* Peer */
-
 x-peer {
     -webkit-user-select: none;
     user-select: none;
@@ -293,39 +400,7 @@ x-peer[drop] x-icon {
     transform: scale(1.1);
 }
 
-
-
-/* Footer */
-
-footer {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    align-items: center;
-    padding: 0 0 16px 0;
-    text-align: center;
-}
-
-footer .logo {
-    --icon-size: 80px;
-    margin-bottom: 8px;
-    color: var(--primary-color);
-}
-
-footer .font-body2 {
-    color: var(--primary-color);
-}
-
-@media (min-height: 800px) {
-    footer {
-        margin-bottom: 16px;
-    }
-}
-
-
 /* Dialog */
-
 x-dialog x-background {
     background: rgba(0, 0, 0, 0.61);
     z-index: 10;
@@ -374,7 +449,6 @@ x-dialog a {
 }
 
 /* Receive Text Dialog */
-
 #receiveTextDialog #text {
     width: 100%;
     word-break: break-all;
@@ -402,7 +476,6 @@ x-dialog a {
 }
 
 /* Button */
-
 .button {
     padding: 0 16px;
     box-sizing: border-box;
@@ -459,15 +532,11 @@ x-dialog a {
     opacity: 0.2;
 }
 
-
-
 button::-moz-focus-inner {
     border: 0;
 }
 
-
 /* Icon Button */
-
 .icon-button {
     width: 40px;
     height: 40px;
@@ -477,40 +546,34 @@ button::-moz-focus-inner {
     border-radius: 50%;
 }
 
-
-
 /* Text Input */
-
 .textarea {
     box-sizing: border-box;
     border: none;
     outline: none;
-    padding: 16px 24px;
-    border-radius: 16px;
+    padding: 10px;
+    border-radius: 12px;
     margin: 8px 0;
-    font-size: 14px;
+    font-size: 16px;
+    line-height: 24px;
     font-family: inherit;
     background: #f1f3f4;
     display: block;
     overflow: auto;
     resize: none;
     min-height: 40px;
-    line-height: 16px;
-    max-height: 300px;
+    max-height: 116px;
 }
 
-
 /* Info Animation */
-
-#about {
-    color: white;
+#members {
     z-index: 11;
     overflow: hidden;
     pointer-events: none;
     text-align: center;
 }
 
-#about .fade-in {
+#members .fade-in {
     transition: opacity 300ms;
     will-change: opacity;
     transition-delay: 300ms;
@@ -518,45 +581,44 @@ button::-moz-focus-inner {
     pointer-events: all;
 }
 
-#about:not(:target) .fade-in {
+#members:not(:target) .fade-in {
     opacity: 0;
     pointer-events: none;
     transition-delay: 0;
 }
 
-#about .logo {
+#members .logo {
     --icon-size: 96px;
 }
 
-#about x-background {
+#members x-background {
     position: absolute;
     top: calc(32px - 200px);
     right: calc(32px - 200px);
     width: 400px;
     height: 400px;
     border-radius: 50%;
-    background: var(--primary-color);
+    background: var(--bg-color);
     transform: scale(0);
     z-index: -1;
 }
 
 /* Hack such that initial scale(0) isn't animated */
-#about x-background {
+#members x-background {
     will-change: transform;
     transition: transform 800ms cubic-bezier(0.77, 0, 0.175, 1);
 }
 
-#about:target x-background {
+#members:target x-background {
     transform: scale(10);
 }
 
-#about .row a {
+#members .row a {
     margin: 8px 8px -16px;
 }
 
 
 /* Loading Indicator */
-
 .progress {
     width: 80px;
     height: 80px;
@@ -585,7 +647,6 @@ button::-moz-focus-inner {
 .over50 .circle.right {
     transform: rotate(180deg);
 }
-
 
 /* Generic placeholder */
 [placeholder]:empty:before {
@@ -624,9 +685,7 @@ x-toast:not([show]):not(:hover) {
     transform: translateY(100px);
 }
 
-
 /* Instructions */
-
 x-instructions {
     position: absolute;
     top: 120px;
@@ -644,15 +703,7 @@ x-peers:empty~x-instructions {
     opacity: 0;
 }
 
-
 /* Responsive Styles */
-
-@media (min-height: 800px) {
-    footer {
-        margin-bottom: 16px;
-    }
-}
-
 @media screen and (min-height: 800px),
 screen and (min-width: 1100px) {
     x-instructions:before {
@@ -692,15 +743,41 @@ screen and (min-width: 1100px) {
 /* Default colors */
 body {
     --text-color: #333;
-    --bg-color: #fff;
-    --bg-color-secondary: #f1f3f4;
+    --msg-bg-color: #95ec69;
+    --pub-bg-color: #f0f0f0;
+    --bg-color: #e6e6e6;
+    --bg-color-secondary: #fff;
 }
 
 /* Dark theme colors */
 body.dark-theme {
     --text-color: #eee;
+    --msg-bg-color: #3eb575;
+    --pub-bg-color: #1e1e1e;
     --bg-color: #121212;
     --bg-color-secondary: #333;
+}
+
+/* Styles for users who prefer dark mode at the OS level */
+@media (prefers-color-scheme: dark) {
+
+    /* defaults to dark theme */
+    body {
+        --text-color: #eee;
+        --msg-bg-color: #3eb575;
+        --pub-bg-color: #1e1e1e;
+        --bg-color: #121212;
+        --bg-color-secondary: #333;
+    }
+
+    /* Override dark mode with light mode styles if the user decides to swap */
+    body.light-theme {
+        --text-color: #333;
+        --msg-bg-color: #95ec69;
+        --pub-bg-color: #f0f0f0;
+        --bg-color: #e6e6e6;
+        --bg-color-secondary: #fff;
+    }
 }
 
 /* Colored Elements */
@@ -735,25 +812,6 @@ x-dialog x-paper {
     padding: 5px;
     background-color: white;
 }
-
-/* Styles for users who prefer dark mode at the OS level */
-@media (prefers-color-scheme: dark) {
-
-    /* defaults to dark theme */
-    body {
-        --text-color: #eee;
-        --bg-color: #121212;
-        --bg-color-secondary: #333;
-    }
-
-    /* Override dark mode with light mode styles if the user decides to swap */
-    body.light-theme {
-        --text-color: #333;
-        --bg-color: #fafafa;
-        --bg-color-secondary: #f1f3f4;
-    }
-}
-
 
 /* 
     Edge specific styles

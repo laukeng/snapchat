@@ -4,22 +4,95 @@ const isURL = text => /^((https?:\/\/|www)[^\s]+)/g.test(text.toLowerCase());
 window.isDownloadSupported = (typeof document.createElement('a').download !== 'undefined');
 window.isProductionEnvironment = !window.location.host.startsWith('localhost');
 window.iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+var joinRoomDialog;
+var snapchat;
+var server;
+var roomName;
+var nickName;
+
+HTMLElement.prototype.appendHTML = function (html) {
+    var divTemp = document.createElement("div"),
+        nodes = null
+        // 文档片段，一次性append，提高性能
+        ,
+        fragment = document.createDocumentFragment();
+    divTemp.innerHTML = html;
+    nodes = divTemp.childNodes;
+    for (var i = 0, length = nodes.length; i < length; i += 1) {
+        fragment.appendChild(nodes[i].cloneNode(true));
+    }
+    this.appendChild(fragment);
+    // 据说下面这样子世界会更清净
+    nodes = null;
+    fragment = null;
+};
+
+function setTitle(count) {
+    $('room-title').innerText = roomName + '(' + count + ')';
+}
 
 // set display name
 Events.on('display-name', e => {
-    const me = e.detail.message;
-    const $displayName = $('displayName')
-    $displayName.textContent = '您的昵称：' + me.displayName;
-    $displayName.title = me.deviceName;
+    const msg = e.detail.message;
+    nickName = decodeURIComponent(msg.displayName);
+    joinRoomDialog.$textName.value = nickName;
+    let msgHtml = '<div class="chat-room-tip">-- ' + nickName + ' 欢迎您加入本群 --</div>'
+    $('chat-room-content').appendHTML(msgHtml);
+    $('chat-room-box').scrollTop = $('chat-room-box').scrollHeight;
 });
 
+Events.on('peers', e => {
+    const msg = e.detail;
+    setTitle(msg.length + 1);
+});
+
+Events.on('peer-joined', e => {
+    const msg = e.detail;
+    let msgHtml = '<div class="chat-room-tip">-- ' + decodeURIComponent(msg.peer.name.displayName) + ' 加入了群聊 --</div>'
+    $('chat-room-content').appendHTML(msgHtml);
+    $('chat-room-box').scrollTop = $('chat-room-box').scrollHeight;
+    setTitle(msg.count + 1);
+});
+
+Events.on('peer-left', e => {
+    const msg = e.detail;
+    let msgHtml = '<div class="chat-room-tip">-- ' + decodeURIComponent(msg.peerName) + ' 退出了群聊 --</div>'
+    $('chat-room-content').appendHTML(msgHtml);
+    $('chat-room-box').scrollTop = $('chat-room-box').scrollHeight;
+    setTitle(msg.count);
+});
+
+Events.on('msg-received', e => {
+    const msg = e.detail;
+    $(msg.id).style.background = 'var(--msg-bg-color)';
+});
+
+Events.on('show-msg', e => {
+    const msg = e.detail;
+    let msgHtml = '<div class="chat-room-other"><div class="chat-room-msg">' +
+        '<span class="chat-room-msg-name">' + msg.name + ' :</span><br/>' +
+        '<span class="chat-room-msg-text">' + msg.text + '</span>' +
+        '</div></div>';
+    $('chat-room-content').appendHTML(msgHtml);
+    $('chat-room-box').scrollTop = $('chat-room-box').scrollHeight;
+});
+
+function showMyMsg(text, id) {
+    let msgHtml = '<div class="chat-room-me"><div id="' + id + '" class="chat-room-msg">' +
+    '<span class="chat-room-msg-name">' + nickName + ' :</span><br/>' +
+    '<span class="chat-room-msg-text">' + text + '</span>' +
+    '</div></div>';
+    $('chat-room-content').appendHTML(msgHtml);
+    $('chat-room-box').scrollTop = $('chat-room-box').scrollHeight;
+    $(id).style.background = '#f57527';
+}
 
 class PeersUI {
 
     constructor() {
         Events.on('peer-opened', e => this._onPeerJoined(e.detail));
         Events.on('peer-closed', e => this._onPeerLeft(e.detail));
-        Events.on('peer-left', e => this._onPeerLeft(e.detail));
+        Events.on('peer-left', e => this._onPeerLeft(e.detail.peerId));
         Events.on('file-progress', e => this._onFileProgress(e.detail));
         Events.on('paste', e => this._onPaste(e));
     }
@@ -227,6 +300,7 @@ class ReceiveDialog extends Dialog {
     constructor() {
         super('receiveDialog');
         Events.on('file-received', e => {
+            console.log('file-received');
             this._nextFile(e.detail);
             window.blop.play();
         });
@@ -313,21 +387,41 @@ class JoinRoomDialog extends Dialog {
             width: 240,
             height: 240
         });
-        this.$text = this.$el.querySelector('#roomInput');
-        this.$text.value = decodeURIComponent(location.pathname.replace(/\//g, ''));
-        this.$text.addEventListener('input', _ => this._makeCode());
+        var nickName = localStorage.getItem("nickName") || "";
+        this.$textRoom = this.$el.querySelector('#roomInput');
+        this.$textRoom.value = decodeURIComponent(location.pathname.replace(/\//g, ''));
+        this.$textRoom.addEventListener('input', _ => this._makeCode());
+        this.$textName = this.$el.querySelector('#nameInput');
+        this.$textName.value = nickName;
         this._makeCode();
         this.$el.querySelector('form').addEventListener('submit', e => this._join(e));
-        document.getElementById('showJoin').addEventListener('click', _ => this.show());
+        document.getElementById('room').addEventListener('click', _ => this.show());
     }
 
     _join(e) {
         e.preventDefault();
-        window.location.href = location.protocol + '//' + location.host + '/' + encodeURIComponent(this.$text.value);
+        if (this.$textRoom.value != '') {
+            roomName = this.$textRoom.value;
+            nickName = this.$textName.value;
+            localStorage.setItem("nickName", nickName);
+            if (decodeURIComponent(location.pathname.replace(/\//g, '')) == roomName) {
+                this.hide();
+                if (server) {
+                    server.reName(nickName);
+                } else {
+                    server = new ServerConnection(roomName, nickName);
+                    snapchat = new Snapchat(server);
+                }
+            } else {
+                window.location.href = location.protocol + '//' + location.host + '/' + encodeURIComponent(roomName);
+            }
+        } else {
+            alert('密室名不能为空');
+        }
     }
 
     _makeCode() {
-        this.qrcode.makeCode(location.protocol + '//' + location.host + '/' + encodeURIComponent(this.$text.value));
+        this.qrcode.makeCode(location.protocol + '//' + location.host + '/' + encodeURIComponent(this.$textRoom.value));
     }
 }
 
@@ -538,26 +632,65 @@ class WebShareTargetUI {
 }
 
 
-class Snapdrop {
-    constructor() {
-        const server = new ServerConnection();
+class Snapchat {
+    constructor(server) {
         const peers = new PeersManager(server);
         const peersUI = new PeersUI();
-        Events.on('load', e => {
-            const joinRoomDialog = new JoinRoomDialog();
-            const receiveDialog = new ReceiveDialog();
-            const sendTextDialog = new SendTextDialog();
-            const receiveTextDialog = new ReceiveTextDialog();
-            const toast = new Toast();
-            const notifications = new Notifications();
-            const networkStatusUI = new NetworkStatusUI();
-            const webShareTargetUI = new WebShareTargetUI();
-        });
+        // Events.on('load', e => {
+        //     const receiveDialog = new ReceiveDialog();
+        //     const sendTextDialog = new SendTextDialog();
+        //     const receiveTextDialog = new ReceiveTextDialog();
+        //     const notifications = new Notifications();
+        //     const networkStatusUI = new NetworkStatusUI();
+        //     const webShareTargetUI = new WebShareTargetUI();
+        // });
     }
 }
 
-const snapdrop = new Snapdrop();
+function onLoad() {
+    joinRoomDialog = new JoinRoomDialog();
+    const receiveDialog = new ReceiveDialog();
+    const sendTextDialog = new SendTextDialog();
+    const receiveTextDialog = new ReceiveTextDialog();
+    const notifications = new Notifications();
+    const networkStatusUI = new NetworkStatusUI();
+    const webShareTargetUI = new WebShareTargetUI();
+    const toast = new Toast();
+    if (joinRoomDialog.$textRoom.value == '' || joinRoomDialog.$textName.value == '') {
+        joinRoomDialog.show();
+    } else {
+        roomName = joinRoomDialog.$textRoom.value;
+        nickName = joinRoomDialog.$textName.value;
+        server = new ServerConnection(roomName, nickName);
+        snapchat = new Snapchat(server);
+    };
+}
 
+Events.on('load', onLoad);
+
+function pubMsg() {
+    if ($('pub-msg-text').innerText != '') {
+        if (server) {
+            let timeStamp = new Date().getTime();
+            let success = server.send({
+                type: 'pub',
+                name: nickName,
+                time: timeStamp,
+                text: $('pub-msg-text').innerText
+            });
+            if (success) {
+                showMyMsg($('pub-msg-text').innerText, timeStamp);
+                $('pub-msg-text').innerText = '';
+            } else {
+                Events.fire('notify-user', '无法发送消息');
+            }
+        } else {
+            Events.fire('notify-user', '未连接到服务器');
+        }
+    }
+}
+
+$('pub-msg-button').addEventListener('click', pubMsg);
 
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/service-worker.js')
@@ -580,68 +713,68 @@ window.addEventListener('beforeinstallprompt', e => {
 });
 
 // Background Animation
-Events.on('load', () => {
-    let c = document.createElement('canvas');
-    document.body.appendChild(c);
-    let style = c.style;
-    style.width = '100%';
-    style.position = 'absolute';
-    style.zIndex = -1;
-    style.top = 0;
-    style.left = 0;
-    let ctx = c.getContext('2d');
-    let x0, y0, w, h, dw;
+// Events.on('load', () => {
+//     let c = document.createElement('canvas');
+//     document.body.appendChild(c);
+//     let style = c.style;
+//     style.width = '100%';
+//     style.position = 'absolute';
+//     style.zIndex = -1;
+//     style.top = 0;
+//     style.left = 0;
+//     let ctx = c.getContext('2d');
+//     let x0, y0, w, h, dw;
 
-    function init() {
-        w = window.innerWidth;
-        h = window.innerHeight;
-        c.width = w;
-        c.height = h;
-        let offset = h > 380 ? 100 : 65;
-        offset = h > 800 ? 116 : offset;
-        x0 = w / 2;
-        y0 = h - offset;
-        dw = Math.max(w, h, 1000) / 13;
-        drawCircles();
-    }
-    window.onresize = init;
+//     function init() {
+//         w = window.innerWidth;
+//         h = window.innerHeight;
+//         c.width = w;
+//         c.height = h;
+//         let offset = h > 380 ? 100 : 65;
+//         offset = h > 800 ? 116 : offset;
+//         x0 = w / 2;
+//         y0 = h - offset;
+//         dw = Math.max(w, h, 1000) / 13;
+//         drawCircles();
+//     }
+//     window.onresize = init;
 
-    function drawCircle(radius) {
-        ctx.beginPath();
-        let color = Math.round(255 * (1 - radius / Math.max(w, h)));
-        ctx.strokeStyle = 'rgba(' + color + ',' + color + ',' + color + ',0.1)';
-        ctx.arc(x0, y0, radius, 0, 2 * Math.PI);
-        ctx.stroke();
-        ctx.lineWidth = 2;
-    }
+//     function drawCircle(radius) {
+//         ctx.beginPath();
+//         let color = Math.round(255 * (1 - radius / Math.max(w, h)));
+//         ctx.strokeStyle = 'rgba(' + color + ',' + color + ',' + color + ',0.1)';
+//         ctx.arc(x0, y0, radius, 0, 2 * Math.PI);
+//         ctx.stroke();
+//         ctx.lineWidth = 2;
+//     }
 
-    let step = 0;
+//     let step = 0;
 
-    function drawCircles() {
-        ctx.clearRect(0, 0, w, h);
-        for (let i = 0; i < 8; i++) {
-            drawCircle(dw * i + step % dw);
-        }
-        step += 1;
-    }
+//     function drawCircles() {
+//         ctx.clearRect(0, 0, w, h);
+//         for (let i = 0; i < 8; i++) {
+//             drawCircle(dw * i + step % dw);
+//         }
+//         step += 1;
+//     }
 
-    let loading = true;
+//     let loading = true;
 
-    function animate() {
-        if (loading || step % dw < dw - 5) {
-            requestAnimationFrame(function () {
-                drawCircles();
-                animate();
-            });
-        }
-    }
-    window.animateBackground = function (l) {
-        loading = l;
-        animate();
-    };
-    init();
-    animate();
-});
+//     function animate() {
+//         if (loading || step % dw < dw - 5) {
+//             requestAnimationFrame(function () {
+//                 drawCircles();
+//                 animate();
+//             });
+//         }
+//     }
+//     window.animateBackground = function (l) {
+//         loading = l;
+//         animate();
+//     };
+//     init();
+//     animate();
+// });
 
 Notifications.PERMISSION_ERROR = `
 Notifications permission has been blocked

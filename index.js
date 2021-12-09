@@ -30,7 +30,7 @@ const http = require('http');
 var path = require("path");
 var fs = require("fs");
 const app = express();
-const port = process.env.PORT || 3000;
+const port = 3001;
 const publicRun = process.argv[2];
 
 app.get('*', (req, res) => {
@@ -51,11 +51,11 @@ app.get('*', (req, res) => {
 
 const server = http.createServer(app);
 (!publicRun == "public") ? server.listen(port): server.listen(port, '0.0.0.0');
-console.log(new Date().toISOString(), ' Snapdrop is running on port', port);
+console.log(new Date().toISOString(), ' Snapchat is running on port', port);
 
 const parser = require('ua-parser-js');
 
-class SnapdropServer {
+class SnapchatServer {
 
     constructor() {
         const WebSocket = require('ws');
@@ -66,20 +66,18 @@ class SnapdropServer {
     }
 
     _onConnection(peer) {
-        if (peer.rtcSupported) {
-            this._joinRoom(peer);
-            peer.socket.on('message', message => this._onMessage(peer, message));
-            this._keepAlive(peer);
+        this._joinRoom(peer);
+        peer.socket.on('message', message => this._onMessage(peer, message));
+        this._keepAlive(peer);
 
-            // send displayName
-            this._send(peer, {
-                type: 'display-name',
-                message: {
-                    displayName: peer.name.displayName,
-                    deviceName: peer.name.deviceName
-                }
-            });
-        }
+        // send displayName
+        this._send(peer, {
+            type: 'display-name',
+            message: {
+                displayName: peer.name.displayName,
+                deviceName: peer.name.deviceName
+            }
+        });
     }
 
     _onHeaders(headers, response) {
@@ -103,6 +101,18 @@ class SnapdropServer {
             case 'pong':
                 sender.lastBeat = Date.now();
                 break;
+            case 'pub':
+                this._pubMsg(sender, message);
+                break;
+            case 'rename':
+                sender.setDispName(message.name);
+                this._send(sender, {
+                    type: 'display-name',
+                    message: {
+                        displayName: sender.name.displayName,
+                        deviceName: sender.name.deviceName
+                    }
+                });
         }
 
         // relay message to recipient
@@ -117,30 +127,40 @@ class SnapdropServer {
         }
     }
 
+    _pubMsg(sender, message) {
+        this._send(sender, {
+            type: 'msg-received',
+            id: message.time
+        });
+        for (const peerId in this._rooms[sender.ip]) {
+            if (sender.id != peerId) this._send(this._rooms[sender.ip][peerId], message)
+        }
+    }
+
     _joinRoom(peer) {
         // if room doesn't exist, create it
         if (!this._rooms[peer.ip]) {
             this._rooms[peer.ip] = {};
+            this._send(peer, {
+                type: 'peers',
+                peers: []
+            });
         } else {
             // notify all other peers
-            for (const otherPeerId in this._rooms[peer.ip]) {
-                const otherPeer = this._rooms[peer.ip][otherPeerId];
-                if (otherPeer != peer.id) {
-                    this._send(otherPeer, {
+            const otherPeers = [];
+            const count = Object.keys(this._rooms[peer.ip]).length;
+            for (const peerId in this._rooms[peer.ip]) {
+                if (peerId != peer.id) {
+                    otherPeers.push(this._rooms[peer.ip][peerId].getInfo());
+                    this._send(this._rooms[peer.ip][peerId], {
                         type: 'peer-joined',
-                        peer: peer.getInfo()
+                        peer: peer.getInfo(),
+                        count: count
                     })
                 }
             }
 
             // notify peer about the other peers
-            const otherPeers = [];
-            for (const otherPeerId in this._rooms[peer.ip]) {
-                if (otherPeerId != peer.id) {
-                    otherPeers.push(this._rooms[peer.ip][otherPeerId].getInfo())
-                }
-            }
-
             this._send(peer, {
                 type: 'peers',
                 peers: otherPeers
@@ -163,12 +183,15 @@ class SnapdropServer {
         if (!Object.keys(this._rooms[peer.ip]).length) {
             delete this._rooms[peer.ip];
         } else {
+            const count = Object.keys(this._rooms[peer.ip]).length;
             // notify all other peers
             for (const otherPeerId in this._rooms[peer.ip]) {
                 const otherPeer = this._rooms[peer.ip][otherPeerId];
                 this._send(otherPeer, {
                     type: 'peer-left',
-                    peerId: peer.id
+                    peerId: peer.id,
+                    peerName: peer.name.displayName,
+                    count: count
                 });
             }
         }
@@ -214,7 +237,7 @@ class Peer {
         // set peer id
         this._setPeerId(request)
         // is WebRTC supported ? '//nortc'.lastIndexOf('/nortc') = 1
-        this.rtcSupported = request.url.lastIndexOf('/nortc') < 1;
+        this.rtcSupported = request.url.lastIndexOf('/false') < 1;
         // set name 
         this._setName(request);
         // for keepalive
@@ -224,8 +247,8 @@ class Peer {
     }
 
     _setIP(request) {
-        if (/^\/[^\/]+/.test(request.url)) {
-            this.ip = decodeURIComponent(request.url.match(/\/([^\/]+)/)[1]);
+        if (/@[^\/]+\//.test(request.url)) {
+            this.ip = decodeURIComponent(request.url.match(/@([^\/]+)\//)[1]);
         } else {
             if (request.headers['x-forwarded-for']) {
                 //console.log('x-forwarded-for:',request.headers['x-forwarded-for']);
@@ -256,8 +279,8 @@ class Peer {
         return `<Peer id=${this.id} ip=${this.ip} rtcSupported=${this.rtcSupported}>`
     }
 
-    _setName(req) {
-        let ua = parser(req.headers['user-agent']);
+    _setName(request) {
+        let ua = parser(request.headers['user-agent']);
 
         let deviceName = '';
 
@@ -271,9 +294,15 @@ class Peer {
 
         if (!deviceName) deviceName = 'Unknown Device';
 
-        var nameGenerator = require('./nameGenerator.js');
-        const displayName = nameGenerator.getName(this.id);
-
+        var displayName;
+        if (/^\/[^@]*@/.test(request.url)) {
+            displayName = decodeURIComponent(request.url.match(/\/([^@]*)@/)[1]);
+        }
+        if (displayName == '') {
+            var nameGenerator = require('./nameGenerator.js');
+            displayName = nameGenerator.getName(this.id);
+        }
+        
         this.name = {
             model: ua.device.model,
             os: ua.os.name,
@@ -282,6 +311,14 @@ class Peer {
             deviceName,
             displayName
         };
+    }
+
+    setDispName(newName){
+        if (newName == '') {
+            var nameGenerator = require('./nameGenerator.js');
+            newName = nameGenerator.getName(this.id);
+        }
+        this.name.displayName = newName;
     }
 
     getInfo() {
@@ -319,4 +356,4 @@ class Peer {
     };
 }
 
-new SnapdropServer();
+new SnapchatServer();

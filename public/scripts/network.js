@@ -3,7 +3,9 @@ window.isRtcSupported = !!(window.RTCPeerConnection || window.mozRTCPeerConnecti
 
 class ServerConnection {
 
-    constructor() {
+    constructor(roomName, nickName) {
+        this._roomName = roomName;
+        this._nickName = nickName;
         this._connect();
         Events.on('beforeunload', e => this._disconnect());
         Events.on('pagehide', e => this._disconnect());
@@ -30,10 +32,10 @@ class ServerConnection {
                 Events.fire('peers', msg.peers);
                 break;
             case 'peer-joined':
-                Events.fire('peer-joined', msg.peer);
+                Events.fire('peer-joined', msg);
                 break;
             case 'peer-left':
-                Events.fire('peer-left', msg.peerId);
+                Events.fire('peer-left', msg);
                 break;
             case 'signal':
                 Events.fire('signal', msg);
@@ -43,7 +45,14 @@ class ServerConnection {
                 Events.fire('refresh', msg);
                 break;
             case 'display-name':
+                this._nickName = decodeURIComponent(msg.message.displayName);
                 Events.fire('display-name', msg);
+                break;
+            case 'pub':
+                Events.fire('show-msg', msg);
+                break;
+            case 'msg-received':
+                Events.fire('msg-received', msg);
                 break;
             default:
                 console.error('WS: unkown message type', msg);
@@ -51,16 +60,27 @@ class ServerConnection {
     }
 
     send(message) {
-        if (!this._isConnected()) return;
+        if (!this._isConnected()) return false;
         this._socket.send(JSON.stringify(message));
+        return true;
     }
 
     _endpoint() {
         // hack to detect if deployment or development environment
         const protocol = location.protocol.startsWith('https') ? 'wss' : 'ws';
-        const nortc = window.isRtcSupported ? '' : '/nortc';
-        const url = protocol + '://' + location.host + location.pathname + nortc;
+        const rtc = window.isRtcSupported ? '/true' : '/false';
+        const url = protocol + '://' + location.host + '/' + encodeURIComponent(this._nickName) + '@' + encodeURIComponent(this._roomName) + rtc;
         return url;
+    }
+
+    reName(nickName) {
+        if (this._nickName != nickName) {
+            this._nickName = nickName;
+            this.send({
+                type: 'rename',
+                name: this._nickName
+            });
+        };
     }
 
     _disconnect() {
@@ -188,8 +208,8 @@ class Peer {
     }
 
     _onChunkReceived(chunk) {
-        if(!(chunk.byteLength || chunk.size)) return;
-        
+        if (!(chunk.byteLength || chunk.size)) return;
+
         this._digester.unchunk(chunk);
         const progress = this._digester.progress;
         this._onDownloadProgress(progress);
@@ -255,7 +275,7 @@ class RTCPeer extends Peer {
     }
 
     _openChannel() {
-        const channel = this._conn.createDataChannel('data-channel', { 
+        const channel = this._conn.createDataChannel('data-channel', {
             ordered: true,
             reliable: true // Obsolete. See https://developer.mozilla.org/en-US/docs/Web/API/RTCDataChannel/reliable
         });
@@ -368,11 +388,11 @@ class PeersManager {
         this._server = serverConnection;
         Events.on('signal', e => this._onMessage(e.detail));
         Events.on('peers', e => this._onPeers(e.detail));
-        Events.on('peer-joined', e => this._onPeerJoined(e.detail));
+        Events.on('peer-joined', e => this._onPeerJoined(e.detail.peer));
         Events.on('refresh', e => this._onRefresh(e.detail));
         Events.on('files-selected', e => this._onFilesSelected(e.detail));
         Events.on('send-text', e => this._onSendText(e.detail));
-        Events.on('peer-left', e => this._onPeerLeft(e.detail));
+        Events.on('peer-left', e => this._onPeerLeft(e.detail.peerId));
     }
 
     _onMessage(message) {
@@ -484,7 +504,6 @@ class FileDigester {
         const totalChunks = this._buffer.length;
         this.progress = this._bytesReceived / this._size;
         if (isNaN(this.progress)) this.progress = 1;
-
         if (this._bytesReceived < this._size) return;
         // we are done
         let blob = new Blob(this._buffer, { type: this._mime });
@@ -513,7 +532,7 @@ RTCPeer.config = {
     'sdpSemantics': 'unified-plan',
     'iceServers': [
         {urls: 'stun:stun.l.google.com:19302'},
-        {urls:'stun:stun.ekiga.net'},
+        {urls: 'stun:stun.ekiga.net'},
         //{urls:'stun:stunserver.org'},
         //{urls:'stun:stun.voipstunt.com'},
         //{urls:'stun:stun.xten.com'}
