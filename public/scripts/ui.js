@@ -4,17 +4,19 @@ const isURL = text => /^((https?:\/\/|www)[^\s]+)/g.test(text.toLowerCase());
 window.isDownloadSupported = (typeof document.createElement('a').download !== 'undefined');
 window.isProductionEnvironment = !window.location.host.startsWith('localhost');
 window.iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-var joinRoomDialog;
-var snapchat;
 var server;
 var roomName;
 var nickName;
+var myId;
+
+function replaceURLWithHTMLLinks(text) {
+    var exp = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/i;
+    return text.replace(exp, '<a target="_blank" href="$1">$1</a>'); 
+}
 
 HTMLElement.prototype.appendHTML = function (html) {
     var divTemp = document.createElement("div"),
-        nodes = null
-        // 文档片段，一次性append，提高性能
-        ,
+        nodes = null,
         fragment = document.createDocumentFragment();
     divTemp.innerHTML = html;
     nodes = divTemp.childNodes;
@@ -22,7 +24,6 @@ HTMLElement.prototype.appendHTML = function (html) {
         fragment.appendChild(nodes[i].cloneNode(true));
     }
     this.appendChild(fragment);
-    // 据说下面这样子世界会更清净
     nodes = null;
     fragment = null;
 };
@@ -33,11 +34,35 @@ function setTitle(count) {
 
 // set display name
 Events.on('display-name', e => {
-    const msg = e.detail.message;
-    nickName = decodeURIComponent(msg.displayName);
-    joinRoomDialog.$textName.value = nickName;
+    const msg = e.detail;
+    nickName = decodeURIComponent(msg.dispName);
+    myId = msg.peerId;
+    $('nameInput').value = nickName;
     let msgHtml = '<div class="chat-room-tip">-- ' + nickName + ' 欢迎您加入本群 --</div>'
     $('chat-room-content').appendHTML(msgHtml);
+    $('chat-room-box').scrollTop = $('chat-room-box').scrollHeight;
+});
+
+Events.on('history-msgs', e => {
+    const msgs = e.detail.msgs;
+    $('chat-room-content').innerHTML = '';
+    var msgHtml = '<div class="chat-room-tip">-- ' + nickName + ' 欢迎您加入本群 --</div>'
+    $('chat-room-content').appendHTML(msgHtml);
+    for (let time in msgs) {
+        let msg = msgs[time];
+        if (msg.sender == myId) {
+            msgHtml = '<div class="chat-room-me"><div class="chat-room-msg">' +
+            '<span class="chat-room-msg-name">' + msg.name + ' :</span><br/>' +
+            '<span class="chat-room-msg-text">' + replaceURLWithHTMLLinks(msg.text) + '</span>' +
+            '</div></div>';
+        } else {
+            msgHtml = '<div class="chat-room-other"><div class="chat-room-msg">' +
+            '<span class="chat-room-msg-name">' + msg.name + ' :</span><br/>' +
+            '<span class="chat-room-msg-text">' + replaceURLWithHTMLLinks(msg.text) + '</span>' +
+            '</div></div>';
+        };
+        $('chat-room-content').appendHTML(msgHtml);
+    }
     $('chat-room-box').scrollTop = $('chat-room-box').scrollHeight;
 });
 
@@ -71,7 +96,7 @@ Events.on('show-msg', e => {
     const msg = e.detail;
     let msgHtml = '<div class="chat-room-other"><div class="chat-room-msg">' +
         '<span class="chat-room-msg-name">' + msg.name + ' :</span><br/>' +
-        '<span class="chat-room-msg-text">' + msg.text + '</span>' +
+        '<span class="chat-room-msg-text">' + replaceURLWithHTMLLinks(msg.text) + '</span>' +
         '</div></div>';
     $('chat-room-content').appendHTML(msgHtml);
     $('chat-room-box').scrollTop = $('chat-room-box').scrollHeight;
@@ -80,7 +105,7 @@ Events.on('show-msg', e => {
 function showMyMsg(text, id) {
     let msgHtml = '<div class="chat-room-me"><div id="' + id + '" class="chat-room-msg">' +
     '<span class="chat-room-msg-name">' + nickName + ' :</span><br/>' +
-    '<span class="chat-room-msg-text">' + text + '</span>' +
+    '<span class="chat-room-msg-text">' + replaceURLWithHTMLLinks(text) + '</span>' +
     '</div></div>';
     $('chat-room-content').appendHTML(msgHtml);
     $('chat-room-box').scrollTop = $('chat-room-box').scrollHeight;
@@ -410,7 +435,6 @@ class JoinRoomDialog extends Dialog {
                     server.reName(nickName);
                 } else {
                     server = new ServerConnection(roomName, nickName);
-                    snapchat = new Snapchat(server);
                 }
             } else {
                 window.location.href = location.protocol + '//' + location.host + '/' + encodeURIComponent(roomName);
@@ -631,24 +655,9 @@ class WebShareTargetUI {
     }
 }
 
-
-class Snapchat {
-    constructor(server) {
-        const peers = new PeersManager(server);
-        const peersUI = new PeersUI();
-        // Events.on('load', e => {
-        //     const receiveDialog = new ReceiveDialog();
-        //     const sendTextDialog = new SendTextDialog();
-        //     const receiveTextDialog = new ReceiveTextDialog();
-        //     const notifications = new Notifications();
-        //     const networkStatusUI = new NetworkStatusUI();
-        //     const webShareTargetUI = new WebShareTargetUI();
-        // });
-    }
-}
-
 function onLoad() {
-    joinRoomDialog = new JoinRoomDialog();
+    const peersUI = new PeersUI();
+    const joinRoomDialog = new JoinRoomDialog();
     const receiveDialog = new ReceiveDialog();
     const sendTextDialog = new SendTextDialog();
     const receiveTextDialog = new ReceiveTextDialog();
@@ -662,7 +671,6 @@ function onLoad() {
         roomName = joinRoomDialog.$textRoom.value;
         nickName = joinRoomDialog.$textName.value;
         server = new ServerConnection(roomName, nickName);
-        snapchat = new Snapchat(server);
     };
 }
 
@@ -671,7 +679,7 @@ Events.on('load', onLoad);
 function pubMsg() {
     if ($('pub-msg-text').innerText != '') {
         if (server) {
-            let timeStamp = new Date().getTime();
+            let timeStamp = Date.now();
             let success = server.send({
                 type: 'pub',
                 name: nickName,

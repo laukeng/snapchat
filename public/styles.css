@@ -186,6 +186,7 @@ footer {
     text-shadow: none;
     -webkit-appearance: none;
     -webkit-user-select: text;
+    user-select: text;
     outline: transparent none 0;
     box-shadow: none;
 }

@@ -63,21 +63,14 @@ class SnapchatServer {
         this._wss.on('connection', (socket, request) => this._onConnection(new Peer(socket, request)));
         this._wss.on('headers', (headers, response) => this._onHeaders(headers, response));
         this._rooms = {};
+        this._msgs = {};
     }
 
     _onConnection(peer) {
         this._joinRoom(peer);
         peer.socket.on('message', message => this._onMessage(peer, message));
         this._keepAlive(peer);
-
-        // send displayName
-        this._send(peer, {
-            type: 'display-name',
-            message: {
-                displayName: peer.name.displayName,
-                deviceName: peer.name.deviceName
-            }
-        });
+        this._sendDispName(peer, peer.name.displayName)
     }
 
     _onHeaders(headers, response) {
@@ -106,13 +99,7 @@ class SnapchatServer {
                 break;
             case 'rename':
                 sender.setDispName(message.name);
-                this._send(sender, {
-                    type: 'display-name',
-                    message: {
-                        displayName: sender.name.displayName,
-                        deviceName: sender.name.deviceName
-                    }
-                });
+                this._sendDispName(sender, );
         }
 
         // relay message to recipient
@@ -132,15 +119,22 @@ class SnapchatServer {
             type: 'msg-received',
             id: message.time
         });
-        for (const peerId in this._rooms[sender.ip]) {
+        message.time = Date.now(); //将消息的时间戳替换成服务器时间
+        for (const peerId in this._rooms[sender.ip]) { //群发消息给其他群成员
             if (sender.id != peerId) this._send(this._rooms[sender.ip][peerId], message)
-        }
+        };
+        this._msgs[sender.ip][message.time] = {
+            sender: sender.id,
+            name: message.name,
+            text: message.text
+        };
     }
 
     _joinRoom(peer) {
         // if room doesn't exist, create it
         if (!this._rooms[peer.ip]) {
             this._rooms[peer.ip] = {};
+            this._msgs[peer.ip] = {};
             this._send(peer, {
                 type: 'peers',
                 peers: []
@@ -182,6 +176,7 @@ class SnapchatServer {
         //if room is empty, delete the room
         if (!Object.keys(this._rooms[peer.ip]).length) {
             delete this._rooms[peer.ip];
+            delete this._msgs[peer.ip];
         } else {
             const count = Object.keys(this._rooms[peer.ip]).length;
             // notify all other peers
@@ -202,6 +197,18 @@ class SnapchatServer {
         if (this._wss.readyState !== this._wss.OPEN) return;
         message = JSON.stringify(message);
         peer.socket.send(message, error => '');
+    }
+
+    _sendDispName(peer) {
+        this._send(peer, {
+            type: 'display-name',
+            dispName: peer.name.displayName,
+            peerId: peer.id
+        });
+        this._send(peer, {
+            type: 'history-msgs',
+            msgs: this._msgs[peer.ip]
+        });
     }
 
     _keepAlive(peer) {
@@ -230,17 +237,11 @@ class SnapchatServer {
 class Peer {
 
     constructor(socket, request) {
-        // set socket
         this.socket = socket;
-        // set remote ip
         this._setIP(request);
-        // set peer id
-        this._setPeerId(request)
-        // is WebRTC supported ? '//nortc'.lastIndexOf('/nortc') = 1
+        this._setPeerId(request);
         this.rtcSupported = request.url.lastIndexOf('/false') < 1;
-        // set name 
         this._setName(request);
-        // for keepalive
         this.timerId = 0;
         this.lastBeat = Date.now();
         console.log(new Date().toISOString(), this.ip, this.name.deviceName, 'RTC:', this.rtcSupported);
@@ -281,28 +282,14 @@ class Peer {
 
     _setName(request) {
         let ua = parser(request.headers['user-agent']);
-
         let deviceName = '';
-
-        if (ua.os && ua.os.name) {
-            deviceName = ua.os.name.replace('Mac OS', 'Mac') + ' ';
-        }
-
-        if (ua.browser.name) {
-            deviceName += ua.browser.name;
-        }
-
+        if (ua.os && ua.os.name) deviceName = ua.os.name.replace('Mac OS', 'Mac') + ' ';
+        if (ua.browser.name) deviceName += ua.browser.name;
         if (!deviceName) deviceName = 'Unknown Device';
-
-        var displayName;
+        var displayName = '';
         if (/^\/[^@]*@/.test(request.url)) {
             displayName = decodeURIComponent(request.url.match(/\/([^@]*)@/)[1]);
         }
-        if (displayName == '') {
-            var nameGenerator = require('./nameGenerator.js');
-            displayName = nameGenerator.getName(this.id);
-        }
-        
         this.name = {
             model: ua.device.model,
             os: ua.os.name,
@@ -311,6 +298,7 @@ class Peer {
             deviceName,
             displayName
         };
+        this.setDispName(displayName);
     }
 
     setDispName(newName){

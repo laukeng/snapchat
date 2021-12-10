@@ -11,9 +11,10 @@ lerna-debug.log*
 # others
 package-lock.json
 test.js
+test.html
+test.json
 *.bat
 *.txt
-test.html
 web.config
 
 # Diagnostic reports (https://nodejs.org/api/report.html)

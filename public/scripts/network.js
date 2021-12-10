@@ -1,5 +1,6 @@
 window.URL = window.URL || window.webkitURL;
 window.isRtcSupported = !!(window.RTCPeerConnection || window.mozRTCPeerConnection || window.webkitRTCPeerConnection);
+var peersManager;
 
 class ServerConnection {
 
@@ -10,6 +11,7 @@ class ServerConnection {
         Events.on('beforeunload', e => this._disconnect());
         Events.on('pagehide', e => this._disconnect());
         document.addEventListener('visibilitychange', e => this._onVisibilityChange());
+        peersManager = new PeersManager(this);
     }
 
     _connect() {
@@ -45,8 +47,11 @@ class ServerConnection {
                 Events.fire('refresh', msg);
                 break;
             case 'display-name':
-                this._nickName = decodeURIComponent(msg.message.displayName);
+                this._nickName = decodeURIComponent(msg.displayName);
                 Events.fire('display-name', msg);
+                break;
+            case 'history-msgs':
+                Events.fire('history-msgs', msg);
                 break;
             case 'pub':
                 Events.fire('show-msg', msg);
