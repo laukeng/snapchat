@@ -45,9 +45,10 @@ Events.on('display-name', e => {
 
 Events.on('history-msgs', e => {
     const msgs = e.detail.msgs;
-    $('chat-room-content').innerHTML = '';
-    var msgHtml = '<div class="chat-room-tip">-- ' + nickName + ' 欢迎您加入本群 --</div>'
-    $('chat-room-content').appendHTML(msgHtml);
+    //if (!Object.keys(msgs).length) return;
+    //$('chat-room-content').innerHTML = '';
+    var msgHtml; // = '<div class="chat-room-tip">-- ' + nickName + ' 欢迎您加入本群 --</div>'
+    //$('chat-room-content').appendHTML(msgHtml);
     for (let time in msgs) {
         let msg = msgs[time];
         if (msg.sender == myId) {
@@ -412,12 +413,11 @@ class JoinRoomDialog extends Dialog {
             width: 240,
             height: 240
         });
-        var nickName = localStorage.getItem("nickName") || "";
         this.$textRoom = this.$el.querySelector('#roomInput');
         this.$textRoom.value = decodeURIComponent(location.pathname.replace(/\//g, ''));
         this.$textRoom.addEventListener('input', _ => this._makeCode());
         this.$textName = this.$el.querySelector('#nameInput');
-        this.$textName.value = nickName;
+        this.$textName.value = localStorage.getItem('nickName') || '';
         this._makeCode();
         this.$el.querySelector('form').addEventListener('submit', e => this._join(e));
         document.getElementById('room').addEventListener('click', _ => this.show());
@@ -425,9 +425,9 @@ class JoinRoomDialog extends Dialog {
 
     _join(e) {
         e.preventDefault();
-        if (this.$textRoom.value != '') {
+        if (this.$textRoom.value) {
             roomName = this.$textRoom.value;
-            nickName = this.$textName.value;
+            nickName = this.$textName.value || '';
             localStorage.setItem("nickName", nickName);
             if (decodeURIComponent(location.pathname.replace(/\//g, '')) == roomName) {
                 this.hide();
@@ -440,7 +440,7 @@ class JoinRoomDialog extends Dialog {
                 window.location.href = location.protocol + '//' + location.host + '/' + encodeURIComponent(roomName);
             }
         } else {
-            alert('密室名不能为空');
+            alert('群聊名称不能为空');
         }
     }
 
@@ -665,12 +665,12 @@ function onLoad() {
     const networkStatusUI = new NetworkStatusUI();
     const webShareTargetUI = new WebShareTargetUI();
     const toast = new Toast();
-    if (joinRoomDialog.$textRoom.value == '' || joinRoomDialog.$textName.value == '') {
-        joinRoomDialog.show();
-    } else {
+    if (joinRoomDialog.$textRoom.value && joinRoomDialog.$textName.value) {
         roomName = joinRoomDialog.$textRoom.value;
         nickName = joinRoomDialog.$textName.value;
         server = new ServerConnection(roomName, nickName);
+    } else {
+        joinRoomDialog.show();
     };
 }
 
@@ -719,70 +719,6 @@ window.addEventListener('beforeinstallprompt', e => {
         return e.preventDefault();
     }
 });
-
-// Background Animation
-// Events.on('load', () => {
-//     let c = document.createElement('canvas');
-//     document.body.appendChild(c);
-//     let style = c.style;
-//     style.width = '100%';
-//     style.position = 'absolute';
-//     style.zIndex = -1;
-//     style.top = 0;
-//     style.left = 0;
-//     let ctx = c.getContext('2d');
-//     let x0, y0, w, h, dw;
-
-//     function init() {
-//         w = window.innerWidth;
-//         h = window.innerHeight;
-//         c.width = w;
-//         c.height = h;
-//         let offset = h > 380 ? 100 : 65;
-//         offset = h > 800 ? 116 : offset;
-//         x0 = w / 2;
-//         y0 = h - offset;
-//         dw = Math.max(w, h, 1000) / 13;
-//         drawCircles();
-//     }
-//     window.onresize = init;
-
-//     function drawCircle(radius) {
-//         ctx.beginPath();
-//         let color = Math.round(255 * (1 - radius / Math.max(w, h)));
-//         ctx.strokeStyle = 'rgba(' + color + ',' + color + ',' + color + ',0.1)';
-//         ctx.arc(x0, y0, radius, 0, 2 * Math.PI);
-//         ctx.stroke();
-//         ctx.lineWidth = 2;
-//     }
-
-//     let step = 0;
-
-//     function drawCircles() {
-//         ctx.clearRect(0, 0, w, h);
-//         for (let i = 0; i < 8; i++) {
-//             drawCircle(dw * i + step % dw);
-//         }
-//         step += 1;
-//     }
-
-//     let loading = true;
-
-//     function animate() {
-//         if (loading || step % dw < dw - 5) {
-//             requestAnimationFrame(function () {
-//                 drawCircles();
-//                 animate();
-//             });
-//         }
-//     }
-//     window.animateBackground = function (l) {
-//         loading = l;
-//         animate();
-//     };
-//     init();
-//     animate();
-// });
 
 Notifications.PERMISSION_ERROR = `
 Notifications permission has been blocked

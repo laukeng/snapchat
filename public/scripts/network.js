@@ -7,6 +7,7 @@ class ServerConnection {
     constructor(roomName, nickName) {
         this._roomName = roomName;
         this._nickName = nickName;
+        this._lastMsgTime = 0; //最后收到的一条消息的服务器时间
         this._connect();
         Events.on('beforeunload', e => this._disconnect());
         Events.on('pagehide', e => this._disconnect());
@@ -32,6 +33,7 @@ class ServerConnection {
         switch (msg.type) {
             case 'peers':
                 Events.fire('peers', msg.peers);
+                this.getHistory();
                 break;
             case 'peer-joined':
                 Events.fire('peer-joined', msg);
@@ -46,17 +48,20 @@ class ServerConnection {
                 this.send({ type: 'pong' });
                 Events.fire('refresh', msg);
                 break;
-            case 'display-name':
-                this._nickName = decodeURIComponent(msg.displayName);
+            case 'display-name': //收到服务器下发的显示昵称
+                this._nickName = decodeURIComponent(msg.dispName);
                 Events.fire('display-name', msg);
                 break;
-            case 'history-msgs':
+            case 'history-msgs': //收到服务器下发的聊天记录
+                this._lastMsgTime = msg.time;
                 Events.fire('history-msgs', msg);
                 break;
-            case 'pub':
+            case 'pub': //收到服务器转发的群发消息
+                this._lastMsgTime = msg.time;
                 Events.fire('show-msg', msg);
                 break;
-            case 'msg-received':
+            case 'msg-received': //收到服务器下发的消息回执
+                this._lastMsgTime = msg.time; //time是服务器时间，id是客户端时间
                 Events.fire('msg-received', msg);
                 break;
             default:
@@ -70,12 +75,11 @@ class ServerConnection {
         return true;
     }
 
-    _endpoint() {
-        // hack to detect if deployment or development environment
-        const protocol = location.protocol.startsWith('https') ? 'wss' : 'ws';
-        const rtc = window.isRtcSupported ? '/true' : '/false';
-        const url = protocol + '://' + location.host + '/' + encodeURIComponent(this._nickName) + '@' + encodeURIComponent(this._roomName) + rtc;
-        return url;
+    getHistory() {
+        this.send({ //请求历史记录
+            type: 'getmsgs',
+            time: this._lastMsgTime
+        });
     }
 
     reName(nickName) {
@@ -87,6 +91,15 @@ class ServerConnection {
             });
         };
     }
+
+    _endpoint() {
+        // hack to detect if deployment or development environment
+        const protocol = location.protocol.startsWith('https') ? 'wss' : 'ws';
+        const rtc = window.isRtcSupported ? '/true' : '/false';
+        const url = protocol + '://' + location.host + '/' + encodeURIComponent(this._nickName) + '@' + encodeURIComponent(this._roomName) + rtc;
+        return url;
+    }
+
 
     _disconnect() {
         this.send({ type: 'disconnect' });
