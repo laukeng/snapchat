@@ -1,4 +1,4 @@
-var process = require('process')
+const process = require('process')
 // Handle SIGINT
 process.on('SIGINT', () => {
     console.info("SIGINT Received, exiting...")
@@ -25,10 +25,18 @@ process.on('unhandledRejection', (reason, promise) => {
     console.log(reason)
 })
 
+function isObjNull(obj) {
+    for (const key in obj) {
+        return false;
+    };
+    return true;
+}
+
 const express = require('express');
 const http = require('http');
 const path = require("path");
 const fs = require("fs");
+const parser = require('ua-parser-js');
 const app = express();
 const port = 3001;
 const publicRun = process.argv[2];
@@ -53,19 +61,18 @@ const server = http.createServer(app);
 (!publicRun == "public") ? server.listen(port): server.listen(port, '0.0.0.0');
 console.log(new Date().toISOString(), ' Snapchat is running on port', port);
 
-const parser = require('ua-parser-js');
 
 class SnapchatServer {
 
     constructor() {
         const WebSocket = require('ws');
-        this._timeDelMsgs = 259200000;
         this._wss = new WebSocket.Server({server});
         this._wss.on('connection', (socket, request) => this._onConnection(new Peer(socket, request)));
         this._wss.on('headers', (headers, response) => this._onHeaders(headers, response));
         this._rooms = {};
         this._msgs = {};
         this._timer = {};
+        this._timeDelMsgs = 259200000;
     }
 
     _onConnection(peer) {
@@ -131,7 +138,7 @@ class SnapchatServer {
     }
 
     _pubMsg(sender, message) {
-        let serverTime = Date.now();
+        const serverTime = Date.now();
         this._send(sender, {
             type: 'msg-received',
             id: message.time,
@@ -141,6 +148,7 @@ class SnapchatServer {
         for (const peerId in this._rooms[sender.room]) { //群发消息给其他群成员
             if (sender.id != peerId) this._send(this._rooms[sender.room][peerId], message)
         };
+        if (!this._msgs[sender.room]) this._msgs[sender.room] = {}; 
         this._msgs[sender.room][message.time] = {
             sender: sender.id,
             name: message.name,
@@ -152,7 +160,7 @@ class SnapchatServer {
             } else {
                 break;
             }
-        }
+        };
     }
 
     _sendHistoryMsgs(peer, time) {
@@ -164,7 +172,7 @@ class SnapchatServer {
             }
         }
         if (time > 0) {
-            var msgs = {};
+            let msgs = {};
             for (const timeId in this._msgs[peer.room]) {
                 if (timeId > time) {
                     msgs[timeId] = this._msgs[peer.room][timeId];
@@ -188,7 +196,7 @@ class SnapchatServer {
         // if room doesn't exist, create it
         if (!this._rooms[peer.room]) {
             this._rooms[peer.room] = {};
-            this._msgs[peer.room] = {};
+            //this._msgs[peer.room] = {};
             this._send(peer, {
                 type: 'peers',
                 peers: []
@@ -217,7 +225,7 @@ class SnapchatServer {
 
         // add peer to room
         this._rooms[peer.room][peer.id] = peer;
-        if (this._timer[peer.room]) clearTimeout(this._timer[peer.room]);
+        if (this._timer[peer.room]) clearTimeout(this._timer[peer.room]); //有成员进群则取消清空消息定时器
     }
 
     _leaveRoom(peer) {
@@ -229,9 +237,13 @@ class SnapchatServer {
 
         peer.socket.terminate();
         //if room is empty, delete the room
-        if (!Object.keys(this._rooms[peer.room]).length) { //最后一个群成员退出
-            //this._delMsgs(room);
-            this._timer[peer.room] = setTimeout(() => this._delMsgs(peer.room), this._timeDelMsgs);
+        if (isObjNull(this._rooms[peer.room])) { //最后一个群成员退出
+            if (isObjNull(this._msgs[peer.room])) { //如果消息记录为空，最后一个成员退出群聊之后直接删除房间和消息对象
+                delete this._rooms[peer.room];
+                delete this._msgs[peer.room];
+            } else { //如果消息记录不为空，最后一个成员退出房间之后设置定时器延时72小时删除房间和消息对象
+                this._timer[peer.room] = setTimeout(() => this._delMsgs(peer.room), this._timeDelMsgs);
+            };
         } else {
             const count = Object.keys(this._rooms[peer.room]).length;
             // notify all other peers
@@ -262,7 +274,7 @@ class SnapchatServer {
 
     _keepAlive(peer) {
         this._cancelKeepAlive(peer);
-        var timeout = 30000;
+        const timeout = 30000;
         if (!peer.lastBeat) {
             peer.lastBeat = Date.now();
         }
@@ -312,7 +324,7 @@ class Peer {
         if (ua.os && ua.os.name) deviceName = ua.os.name.replace('Mac OS', 'Mac') + ' ';
         if (ua.browser.name) deviceName += ua.browser.name;
         if (!deviceName) deviceName = 'Unknown Device';
-        var displayName = '';
+        let displayName = '';
         if (/^\/[^@]*@/.test(request.url)) {
             displayName = decodeURIComponent(request.url.match(/\/([^@]*)@/)[1]);
         }
@@ -329,7 +341,7 @@ class Peer {
 
     setDispName(newName){
         if (!newName) {
-            var nameGenerator = require('./nameGenerator.js');
+            const nameGenerator = require('./nameGenerator.js');
             newName = nameGenerator.getName(this.id);
         }
         this.name.displayName = newName;
