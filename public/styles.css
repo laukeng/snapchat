@@ -130,19 +130,35 @@ header {
     padding: 0px 10px 0px 50px;
 }
 
-.chat-room-msg {
+.chat-room-other .chat-room-msg {
     border-radius: 8px;
     padding: 2px 10px;
-    background: var(--msg-bg-color);
+    background: var(--msg-bg-color-other);
+    color: var(--msg-text-color-other);
     font-size: 16px;
     line-height: 28px;
     font-weight: normal;
-    color: #000;
+}
+
+.chat-room-me .chat-room-msg {
+    border-radius: 8px;
+    padding: 2px 10px;
+    background: var(--msg-bg-color-me);
+    color: var(--msg-text-color-me);
+    font-size: 16px;
+    line-height: 28px;
+    font-weight: normal;
+}
+
+.chat-room-msg-time {
+    font-size: 12px;
+    line-height: 12px;
+    color: #959595;
 }
 
 .chat-room-msg-name {
     font-weight: bold;
-    color: #D02129;
+    color: #a33a3a;
 }
 
 .chat-room-msg-text {
@@ -744,7 +760,10 @@ screen and (min-width: 1100px) {
 /* Default colors */
 body {
     --text-color: #333;
-    --msg-bg-color: #95ec69;
+    --msg-bg-color-me: #95ec69;
+    --msg-bg-color-other: #fff;
+    --msg-text-color-me: #181818;
+    --msg-text-color-other: #181818;
     --pub-bg-color: #f0f0f0;
     --bg-color: #e6e6e6;
     --bg-color-secondary: #fff;
@@ -753,7 +772,10 @@ body {
 /* Dark theme colors */
 body.dark-theme {
     --text-color: #eee;
-    --msg-bg-color: #3eb575;
+    --msg-bg-color-me: #2b7e52;
+    --msg-bg-color-other: #1f1f1f;
+    --msg-text-color-me: #181818;
+    --msg-text-color-other: #959595;
     --pub-bg-color: #1e1e1e;
     --bg-color: #121212;
     --bg-color-secondary: #333;
@@ -765,7 +787,10 @@ body.dark-theme {
     /* defaults to dark theme */
     body {
         --text-color: #eee;
-        --msg-bg-color: #3eb575;
+        --msg-bg-color-me: #2b7e52;
+        --msg-bg-color-other: #1f1f1f;
+        --msg-text-color-me: #181818;
+        --msg-text-color-other: #959595;
         --pub-bg-color: #1e1e1e;
         --bg-color: #121212;
         --bg-color-secondary: #333;
@@ -774,7 +799,10 @@ body.dark-theme {
     /* Override dark mode with light mode styles if the user decides to swap */
     body.light-theme {
         --text-color: #333;
-        --msg-bg-color: #95ec69;
+        --msg-bg-color-me: #95ec69;
+        --msg-bg-color-other: #fff;
+        --msg-text-color-me: #181818;
+        --msg-text-color-other: #181818;
         --pub-bg-color: #f0f0f0;
         --bg-color: #e6e6e6;
         --bg-color-secondary: #fff;
@@ -831,9 +859,17 @@ x-dialog x-paper {
     left: 0px;
     right: 0px;
     margin: 0px auto;
-    padding: 6px;
-    background-color: orange;
-    color: royalblue;
+    padding: 10px 15px;
+    background-color: #ffcc00;
+    color: #3060d0;
     font-size: 14px;
     display: none;
+}
+
+#close-warning {
+    float: right;
+    padding: 4px 6px;
+    border-radius: 6px;
+    background: #f5deb3;
+    color: #4682b4;
 }

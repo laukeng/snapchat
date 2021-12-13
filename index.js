@@ -27,8 +27,8 @@ process.on('unhandledRejection', (reason, promise) => {
 
 const express = require('express');
 const http = require('http');
-var path = require("path");
-var fs = require("fs");
+const path = require("path");
+const fs = require("fs");
 const app = express();
 const port = 3001;
 const publicRun = process.argv[2];
@@ -76,9 +76,12 @@ class SnapchatServer {
     }
 
     _onHeaders(headers, response) {
-        if (response.headers.cookie && response.headers.cookie.indexOf('peerid=') > -1) return;
-        response.peerId = Peer.uuid();
-        headers.push('Set-Cookie: peerid=' + response.peerId + "; SameSite=Strict; Max-Age=86400; Secure");
+        if (response.headers.cookie && /peerid=[0-9a-zA-Z]{8}-[0-9a-zA-Z]{4}-4[0-9a-zA-Z]{3}-[0-9a-zA-Z]{4}-[0-9a-zA-Z]{12}/.test(response.headers.cookie)) {
+            response.peerId = response.headers.cookie.match(/peerid=([0-9a-zA-Z]{8}-[0-9a-zA-Z]{4}-4[0-9a-zA-Z]{3}-[0-9a-zA-Z]{4}-[0-9a-zA-Z]{12})/)[1];
+        } else {
+            response.peerId = Peer.uuid();
+        }
+        headers.push('Set-Cookie: peerid=' + response.peerId + "; SameSite=Strict; Max-Age=259200"); //; Secure
     }
 
     _onMessage(sender, message) {
@@ -103,14 +106,14 @@ class SnapchatServer {
                 this._pubMsg(sender, message);
                 break;
             case 'rename':
-                sender.setDispName(message.name || '');
+                sender.setDispName(message.name);
                 this._sendDispName(sender);
         }
 
         // relay message to recipient
-        if (message.to && this._rooms[sender.ip]) {
+        if (message.to && this._rooms[sender.room]) {
             const recipientId = message.to; // TODO: sanitize
-            const recipient = this._rooms[sender.ip][recipientId];
+            const recipient = this._rooms[sender.room][recipientId];
             delete message.to;
             // add sender id
             message.sender = sender.id;
@@ -135,17 +138,17 @@ class SnapchatServer {
             time: serverTime
         });
         message.time = serverTime; //将消息的时间戳替换成服务器时间
-        for (const peerId in this._rooms[sender.ip]) { //群发消息给其他群成员
-            if (sender.id != peerId) this._send(this._rooms[sender.ip][peerId], message)
+        for (const peerId in this._rooms[sender.room]) { //群发消息给其他群成员
+            if (sender.id != peerId) this._send(this._rooms[sender.room][peerId], message)
         };
-        this._msgs[sender.ip][message.time] = {
+        this._msgs[sender.room][message.time] = {
             sender: sender.id,
             name: message.name,
             text: message.text
         };
-        for (const timeId in this._msgs[sender.ip]) {
+        for (const timeId in this._msgs[sender.room]) {
             if (Date.now() - timeId > this._timeDelMsgs) {
-                delete this._msgs[sender.ip][timeId];
+                delete this._msgs[sender.room][timeId];
             } else {
                 break;
             }
@@ -153,18 +156,18 @@ class SnapchatServer {
     }
 
     _sendHistoryMsgs(peer, time) {
-        for (const timeId in this._msgs[peer.ip]) {
+        for (const timeId in this._msgs[peer.room]) {
             if (Date.now() - timeId > this._timeDelMsgs) {
-                delete this._msgs[peer.ip][timeId];
+                delete this._msgs[peer.room][timeId];
             } else {
                 break;
             }
         }
         if (time > 0) {
             var msgs = {};
-            for (const timeId in this._msgs[peer.ip]) {
+            for (const timeId in this._msgs[peer.room]) {
                 if (timeId > time) {
-                    msgs[timeId] = this._msgs[peer.ip][timeId];
+                    msgs[timeId] = this._msgs[peer.room][timeId];
                 }
             }
             this._send(peer, {
@@ -176,16 +179,16 @@ class SnapchatServer {
             this._send(peer, {
                 type: 'history-msgs',
                 time: Date.now(),
-                msgs: this._msgs[peer.ip]
+                msgs: this._msgs[peer.room]
             });
         }
     }
 
     _joinRoom(peer) {
         // if room doesn't exist, create it
-        if (!this._rooms[peer.ip]) {
-            this._rooms[peer.ip] = {};
-            this._msgs[peer.ip] = {};
+        if (!this._rooms[peer.room]) {
+            this._rooms[peer.room] = {};
+            this._msgs[peer.room] = {};
             this._send(peer, {
                 type: 'peers',
                 peers: []
@@ -193,11 +196,11 @@ class SnapchatServer {
         } else {
             // notify all other peers
             const otherPeers = [];
-            const count = Object.keys(this._rooms[peer.ip]).length;
-            for (const peerId in this._rooms[peer.ip]) {
+            const count = Object.keys(this._rooms[peer.room]).length;
+            for (const peerId in this._rooms[peer.room]) {
                 if (peerId != peer.id) {
-                    otherPeers.push(this._rooms[peer.ip][peerId].getInfo());
-                    this._send(this._rooms[peer.ip][peerId], {
+                    otherPeers.push(this._rooms[peer.room][peerId].getInfo());
+                    this._send(this._rooms[peer.room][peerId], {
                         type: 'peer-joined',
                         peer: peer.getInfo(),
                         count: count
@@ -213,27 +216,27 @@ class SnapchatServer {
         }
 
         // add peer to room
-        this._rooms[peer.ip][peer.id] = peer;
-        if (this._timer[peer.ip]) clearTimeout(this._timer[peer.ip]);
+        this._rooms[peer.room][peer.id] = peer;
+        if (this._timer[peer.room]) clearTimeout(this._timer[peer.room]);
     }
 
     _leaveRoom(peer) {
-        if (!this._rooms[peer.ip] || !this._rooms[peer.ip][peer.id]) return;
-        this._cancelKeepAlive(this._rooms[peer.ip][peer.id]);
+        if (!this._rooms[peer.room] || !this._rooms[peer.room][peer.id]) return;
+        this._cancelKeepAlive(this._rooms[peer.room][peer.id]);
 
         // delete the peer
-        delete this._rooms[peer.ip][peer.id];
+        delete this._rooms[peer.room][peer.id];
 
         peer.socket.terminate();
         //if room is empty, delete the room
-        if (!Object.keys(this._rooms[peer.ip]).length) { //最后一个群成员退出
+        if (!Object.keys(this._rooms[peer.room]).length) { //最后一个群成员退出
             //this._delMsgs(room);
-            this._timer[peer.ip] = setTimeout(() => this._delMsgs(peer.ip), this._timeDelMsgs);
+            this._timer[peer.room] = setTimeout(() => this._delMsgs(peer.room), this._timeDelMsgs);
         } else {
-            const count = Object.keys(this._rooms[peer.ip]).length;
+            const count = Object.keys(this._rooms[peer.room]).length;
             // notify all other peers
-            for (const otherPeerId in this._rooms[peer.ip]) {
-                const otherPeer = this._rooms[peer.ip][otherPeerId];
+            for (const otherPeerId in this._rooms[peer.room]) {
+                const otherPeer = this._rooms[peer.room][otherPeerId];
                 this._send(otherPeer, {
                     type: 'peer-left',
                     peerId: peer.id,
@@ -283,45 +286,24 @@ class Peer {
     constructor(socket, request) {
         this.socket = socket;
         this._setIP(request);
-        this._setPeerId(request);
+        this.id = request.peerId;
         this.rtcSupported = request.url.lastIndexOf('/false') < 1;
         this._setName(request);
         this.timerId = 0;
         this.lastBeat = Date.now();
-        console.log(new Date().toISOString(), this.ip, this.name.deviceName, 'RTC:', this.rtcSupported);
+        //console.log(new Date().toISOString(), this.room, this.name.deviceName, 'RTC:', this.rtcSupported);
     }
 
     _setIP(request) {
         if (/@[^\/]+\//.test(request.url)) {
-            this.ip = decodeURIComponent(request.url.match(/@([^\/]+)\//)[1]);
+            this.room = decodeURIComponent(request.url.match(/@([^\/]+)\//)[1]);
         } else {
-            if (request.headers['x-forwarded-for']) {
-                //console.log('x-forwarded-for:',request.headers['x-forwarded-for']);
-                var ip = /\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}/;
-                //this.ip = request.headers['x-forwarded-for'].split(/\s*,\s*/)[0];
-                this.ip = request.headers['x-forwarded-for'].match(ip)[0];
-            } else {
-                //console.log('connection.remoteAddress:',request.connection.remoteAddress);
-                this.ip = request.connection.remoteAddress;
-            }
-            // IPv4 and IPv6 use different values to refer to localhost
-            if (this.ip == '::1' || this.ip == '::ffff:127.0.0.1') {
-                this.ip = '127.0.0.1';
-            }
-        }
-        if (/^((192\.168\.)|fe80|(10\.)|(172\.16\.))/.test(this.ip)) this.ip = "local";
-    }
-
-    _setPeerId(request) {
-        if (request.peerId) {
-            this.id = request.peerId;
-        } else {
-            this.id = request.headers.cookie.match(/peerid=([0-9a-zA-Z]{8}-[0-9a-zA-Z]{4}-4[0-9a-zA-Z]{3}-[0-9a-zA-Z]{4}-[0-9a-zA-Z]{12})/)[1];
+            this.room = '';
         }
     }
 
     toString() {
-        return `<Peer id=${this.id} ip=${this.ip} rtcSupported=${this.rtcSupported}>`
+        return `<Peer id=${this.id} ip=${this.room} rtcSupported=${this.rtcSupported}>`
     }
 
     _setName(request) {
@@ -342,7 +324,7 @@ class Peer {
             deviceName,
             displayName
         };
-        this.setDispName(displayName);
+        if (!displayName) this.setDispName();
     }
 
     setDispName(newName){

@@ -32,7 +32,6 @@
 </head>
 
 <body translate="no">
-    <div id="warning" style="display:none"></div>
     <header>
         <div id="room-title">未加入群聊(0)</div>
         <div class="row-reverse">
@@ -65,6 +64,9 @@
     </header>
     <!-- 聊天记录 -->
     <div id="chat-room-box">
+        <div id="warning" style="display:none">
+            <span id="warning-text"></span><span id="close-warning"><a title="关闭提示">我知道了</a></span>
+        </div>
         <div id="chat-room-content">
             <div class="chat-room-tip">-- 欢迎使用SnapChat --</div>
             <div class="chat-room-other">
@@ -249,7 +251,7 @@
     <script src="scripts/clipboard.js" async></script>
     <script src="scripts/qrcode.js"></script>
     <script src="scripts/ui.js"></script>
-    <!-- <script src="scripts/checkbrowser.js"></script> -->
+    <script src="scripts/checkbrowser.js"></script>
     <!-- Sounds -->
     <audio id="blop" autobuffer="true">
         <source src="/sounds/blop.mp3" type="audio/mpeg">

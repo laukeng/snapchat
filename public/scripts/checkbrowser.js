@@ -1,9 +1,9 @@
 var userAgent = navigator.userAgent.toLowerCase();
 var divWarning = document.getElementById("warning");
-if (!window.isRtcSupported) {
-    divWarning.innerText = '您当前使用的浏览器不支持WebRTC，请用其他浏览器打开此页面。推荐使用Safari、Firefox或者Chrome等浏览器。';
-    divWarning.style.display = "block";
-} else if (userAgent.indexOf("wechat") > -1 || userAgent.indexOf("micromessenger") > -1) {
-    divWarning.innerText = '微信无法下载文件，如需接收文件，请点击右上角选择“在浏览器打开”。推荐使用Safari、Firefox或者Chrome等浏览器。';
+var divWarningText = document.getElementById("warning-text");
+var closeWarning = document.getElementById("close-warning");
+closeWarning.addEventListener('click', function() {divWarning.style.display = "none";})
+if (userAgent.indexOf("wechat") > -1 || userAgent.indexOf("micromessenger") > -1) {
+    divWarningText.innerText = '你正在微信浏览器中运行本应用。如果你想返回微信而不退出群聊，请点击右上角"···"的图标，然后在屏幕下方的菜单中选择“浮窗”将此页面转入后台。在微信主界面右划即可返回此页面。';
     divWarning.style.display = "block";
 }

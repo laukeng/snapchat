@@ -17,14 +17,16 @@ class ServerConnection {
 
     _connect() {
         clearTimeout(this._reconnectTimer);
-        if (this._isConnected() || this._isConnecting()) return;
-        const ws = new WebSocket(this._endpoint());
-        ws.binaryType = 'arraybuffer';
-        ws.onopen = e => console.log('WS: server connected');
-        ws.onmessage = e => this._onMessage(e.data);
-        ws.onclose = e => this._onDisconnect();
-        ws.onerror = e => console.error(e);
-        this._socket = ws;
+        if (!this._isConnected() && !this._isConnecting()) {
+            const ws = new WebSocket(this._endpoint());
+            ws.binaryType = 'arraybuffer';
+            ws.onopen = e => console.log('WS: server connected');
+            ws.onmessage = e => this._onMessage(e.data);
+            ws.onclose = e => this._onDisconnect();
+            ws.onerror = e => console.error(e);
+            this._socket = ws;
+        }
+        this._reconnectTimer = setTimeout(_ => this._connect(), 5000);
     }
 
     _onMessage(msg) {
@@ -85,10 +87,14 @@ class ServerConnection {
     reName(nickName) {
         if (this._nickName != nickName) {
             this._nickName = nickName;
-            this.send({
-                type: 'rename',
-                name: this._nickName
-            });
+            // this.send({
+            //     type: 'rename',
+            //     name: this._nickName
+            // });
+            this.send({ type: 'disconnect' });
+            this._socket.onclose = null;
+            this._socket.close();
+            this._connect();
         };
     }
 
@@ -99,7 +105,6 @@ class ServerConnection {
         const url = protocol + '://' + location.host + '/' + encodeURIComponent(this._nickName) + '@' + encodeURIComponent(this._roomName) + rtc;
         return url;
     }
-
 
     _disconnect() {
         this.send({ type: 'disconnect' });

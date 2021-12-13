@@ -11,7 +11,24 @@ var myId;
 
 function replaceURLWithHTMLLinks(text) {
     var exp = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/i;
-    return text.replace(exp, '<a target="_blank" href="$1">$1</a>'); 
+    return text.replace(exp, '<a target="_blank" href="$1">$1</a>');
+}
+
+Date.prototype.format = function (fmt) {
+    var o = {
+        "M+": this.getMonth() + 1, // 月份
+        "d+": this.getDate(), // 日
+        "h+": this.getHours(), // 小时
+        "m+": this.getMinutes(), // 分
+        "s+": this.getSeconds(), // 秒
+        "q+": Math.floor((this.getMonth() + 3) / 3), // 季度
+        "S": this.getMilliseconds() // 毫秒
+    };
+    if (/(y+)/.test(fmt))
+        fmt = fmt.replace(RegExp.$1, (this.getFullYear() + "").substr(4 - RegExp.$1.length));
+    for (var k in o)
+        if (new RegExp("(" + k + ")").test(fmt)) fmt = fmt.replace(RegExp.$1, (RegExp.$1.length == 1) ? (o[k]) : (("00" + o[k]).substr(("" + o[k]).length)));
+    return fmt;
 }
 
 HTMLElement.prototype.appendHTML = function (html) {
@@ -51,17 +68,12 @@ Events.on('history-msgs', e => {
     //$('chat-room-content').appendHTML(msgHtml);
     for (let time in msgs) {
         let msg = msgs[time];
-        if (msg.sender == myId) {
-            msgHtml = '<div class="chat-room-me"><div class="chat-room-msg">' +
-            '<span class="chat-room-msg-name">' + msg.name + ' :</span><br/>' +
+        let divClass = msg.sender == myId ? 'me' : 'other';
+        msgHtml = '<div class="chat-room-' + divClass + '"><div class="chat-room-msg">' +
+            '<span class="chat-room-msg-time">' + new Date(parseInt(time)).format("yyyy-MM-dd hh:mm:ss") + '</span></br>' +
+            '<span class="chat-room-msg-name">' + msg.name + ' : </span>' +
             '<span class="chat-room-msg-text">' + replaceURLWithHTMLLinks(msg.text) + '</span>' +
             '</div></div>';
-        } else {
-            msgHtml = '<div class="chat-room-other"><div class="chat-room-msg">' +
-            '<span class="chat-room-msg-name">' + msg.name + ' :</span><br/>' +
-            '<span class="chat-room-msg-text">' + replaceURLWithHTMLLinks(msg.text) + '</span>' +
-            '</div></div>';
-        };
         $('chat-room-content').appendHTML(msgHtml);
     }
     $('chat-room-box').scrollTop = $('chat-room-box').scrollHeight;
@@ -90,13 +102,14 @@ Events.on('peer-left', e => {
 
 Events.on('msg-received', e => {
     const msg = e.detail;
-    $(msg.id).style.background = 'var(--msg-bg-color)';
+    $(msg.id).style.background = 'var(--msg-bg-color-me)';
 });
 
 Events.on('show-msg', e => {
     const msg = e.detail;
     let msgHtml = '<div class="chat-room-other"><div class="chat-room-msg">' +
-        '<span class="chat-room-msg-name">' + msg.name + ' :</span><br/>' +
+        '<span class="chat-room-msg-time">' + new Date(parseInt(msg.time)).format("yyyy-MM-dd hh:mm:ss") + '</span></br>' +
+        '<span class="chat-room-msg-name">' + msg.name + ' : </span>' +
         '<span class="chat-room-msg-text">' + replaceURLWithHTMLLinks(msg.text) + '</span>' +
         '</div></div>';
     $('chat-room-content').appendHTML(msgHtml);
@@ -105,12 +118,13 @@ Events.on('show-msg', e => {
 
 function showMyMsg(text, id) {
     let msgHtml = '<div class="chat-room-me"><div id="' + id + '" class="chat-room-msg">' +
-    '<span class="chat-room-msg-name">' + nickName + ' :</span><br/>' +
-    '<span class="chat-room-msg-text">' + replaceURLWithHTMLLinks(text) + '</span>' +
-    '</div></div>';
+        '<span class="chat-room-msg-time">' + new Date(parseInt(id)).format("yyyy-MM-dd hh:mm:ss") + '</span></br>' +
+        '<span class="chat-room-msg-name">' + nickName + ' : </span>' +
+        '<span class="chat-room-msg-text">' + replaceURLWithHTMLLinks(text) + '</span>' +
+        '</div></div>';
     $('chat-room-content').appendHTML(msgHtml);
     $('chat-room-box').scrollTop = $('chat-room-box').scrollHeight;
-    $(id).style.background = '#f57527';
+    $(id).style.background = '#ee9911';
 }
 
 class PeersUI {
@@ -427,16 +441,17 @@ class JoinRoomDialog extends Dialog {
         e.preventDefault();
         if (this.$textRoom.value) {
             roomName = this.$textRoom.value;
-            nickName = this.$textName.value || '';
+            nickName = this.$textName.value;
             localStorage.setItem("nickName", nickName);
             if (decodeURIComponent(location.pathname.replace(/\//g, '')) == roomName) {
+                //如果输入的群聊名称跟当前的路径名称相同，则判断是否已连接，若已连接则重命名，若未连接则新建一个连接
                 this.hide();
                 if (server) {
                     server.reName(nickName);
                 } else {
                     server = new ServerConnection(roomName, nickName);
                 }
-            } else {
+            } else { //如果输入的群聊名称跟当前的路径名称不同，则跳转到新的地址
                 window.location.href = location.protocol + '//' + location.host + '/' + encodeURIComponent(roomName);
             }
         } else {
