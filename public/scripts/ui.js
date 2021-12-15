@@ -11,7 +11,7 @@ var myId;
 console.log(getComputedStyle(document.documentElement).getPropertyValue('--display-trash'));
 
 Date.prototype.format = function (fmt) {
-    var o = {
+    let o = {
         "M+": this.getMonth() + 1, // 月份
         "d+": this.getDate(), // 日
         "h+": this.getHours(), // 小时
@@ -22,18 +22,18 @@ Date.prototype.format = function (fmt) {
     };
     if (/(y+)/.test(fmt))
         fmt = fmt.replace(RegExp.$1, (this.getFullYear() + "").substr(4 - RegExp.$1.length));
-    for (var k in o)
+    for (let k in o)
         if (new RegExp("(" + k + ")").test(fmt)) fmt = fmt.replace(RegExp.$1, (RegExp.$1.length == 1) ? (o[k]) : (("00" + o[k]).substr(("" + o[k]).length)));
     return fmt;
 }
 
 HTMLElement.prototype.appendHTML = function (html) {
-    var divTemp = document.createElement("div"),
+    let divTemp = document.createElement("div"),
         nodes = null,
         fragment = document.createDocumentFragment();
     divTemp.innerHTML = html;
     nodes = divTemp.childNodes;
-    for (var i = 0, length = nodes.length; i < length; i += 1) {
+    for (let i = 0, length = nodes.length; i < length; i += 1) {
         fragment.appendChild(nodes[i].cloneNode(true));
     }
     this.appendChild(fragment);
@@ -59,6 +59,12 @@ Events.on('load', e => {
         joinRoomDialog.show();
     };
     $('pub-msg-button').addEventListener('click', pubMsg);
+    $('pub-msg-text').onkeydown = function(ev){
+        let oEvent = ev || event;
+        if (oEvent.keyCode == 13 && oEvent.ctrlKey) {
+            pubMsg();
+        }
+    };
     $('delete').addEventListener('click', function () {
         if (getComputedStyle(document.documentElement).getPropertyValue('--display-trash') == 'none') {
             document.documentElement.style.setProperty('--display-trash', 'block');
@@ -151,12 +157,12 @@ Events.on('show-msg', e => { //当接收到服务器群发的一条消息
 });
 
 function replaceURLWithHTMLLinks(text) {
-    var exp = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/i;
+    let exp = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/i;
     return text.replace(exp, '<a target="_blank" href="$1">$1</a>');
 }
 
 function delMsgs(sender){
-    var els = document.getElementsByClassName(sender);
+    let els = document.getElementsByClassName(sender);
     for (let i = 0; i < els.length; i++) {
         els[i].querySelector('.chat-room-msg-text').innerHTML = '<span class="chat-room-msg-text-del">[此消息已被删除]</span>';
     }
