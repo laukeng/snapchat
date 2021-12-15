@@ -83,8 +83,10 @@ class SnapchatServer {
     }
 
     _onHeaders(headers, response) {
-        if (response.headers.cookie && /peerid=[0-9a-zA-Z]{8}-[0-9a-zA-Z]{4}-4[0-9a-zA-Z]{3}-[0-9a-zA-Z]{4}-[0-9a-zA-Z]{12}/.test(response.headers.cookie)) {
-            response.peerId = response.headers.cookie.match(/peerid=([0-9a-zA-Z]{8}-[0-9a-zA-Z]{4}-4[0-9a-zA-Z]{3}-[0-9a-zA-Z]{4}-[0-9a-zA-Z]{12})/)[1];
+        let match;
+        if (response.headers.cookie) match = response.headers.cookie.match(/peerid=([0-9a-zA-Z]{8}-[0-9a-zA-Z]{4}-4[0-9a-zA-Z]{3}-[0-9a-zA-Z]{4}-[0-9a-zA-Z]{12})/);
+        if (match) {
+            response.peerId = match[1];
         } else {
             response.peerId = Peer.uuid();
         }
@@ -112,9 +114,6 @@ class SnapchatServer {
             case 'pub':
                 this._pubMsg(sender, message);
                 break;
-            case 'rename':
-                sender.setDispName(message.name);
-                this._sendDispName(sender);
         }
 
         // relay message to recipient
@@ -145,22 +144,41 @@ class SnapchatServer {
             time: serverTime
         });
         message.time = serverTime; //将消息的时间戳替换成服务器时间
+        message.sender = sender.id;
         for (const peerId in this._rooms[sender.room]) { //群发消息给其他群成员
             if (sender.id != peerId) this._send(this._rooms[sender.room][peerId], message)
         };
-        if (!this._msgs[sender.room]) this._msgs[sender.room] = {}; 
-        this._msgs[sender.room][message.time] = {
-            sender: sender.id,
-            name: message.name,
-            text: message.text
-        };
-        for (const timeId in this._msgs[sender.room]) {
+        for (const timeId in this._msgs[sender.room]) { //删除72小时之前的记录
             if (Date.now() - timeId > this._timeDelMsgs) {
                 delete this._msgs[sender.room][timeId];
             } else {
                 break;
             }
         };
+        let delCmd = message.text.match(/^\/del:(.+)/);
+        if (delCmd) { //如果为删除指令
+            if (delCmd[1] == 'all') {
+                for (const timeId in this._msgs[sender.room]) { //删除记录
+                    if (this._msgs[sender.room][timeId].sender == sender.id) {
+                        this._msgs[sender.room][timeId].text = '<span class="chat-room-msg-text-del">[此消息已被删除]</span>';
+                    }
+                };
+            } else {
+                for (const timeId in this._msgs[sender.room]) { //删除记录
+                    if (timeId == delCmd[1] && sender.id == this._msgs[sender.room][timeId].sender) {
+                        this._msgs[sender.room][timeId].text = '<span class="chat-room-msg-text-del">[此消息已被删除]</span>';
+                        break;
+                    }
+                };
+            }
+        } else { //如果不是指令，则添加到对象：_msgs[roomID]，然后添加到数据库
+            if (!this._msgs[sender.room]) this._msgs[sender.room] = {}; 
+            this._msgs[sender.room][message.time] = {
+                sender: sender.id,
+                name: message.name,
+                text: message.text
+            }
+        }
     }
 
     _sendHistoryMsgs(peer, time) {
@@ -297,7 +315,7 @@ class Peer {
 
     constructor(socket, request) {
         this.socket = socket;
-        this._setIP(request);
+        this._setRoom(request);
         this.id = request.peerId;
         this.rtcSupported = request.url.lastIndexOf('/false') < 1;
         this._setName(request);
@@ -306,11 +324,12 @@ class Peer {
         //console.log(new Date().toISOString(), this.room, this.name.deviceName, 'RTC:', this.rtcSupported);
     }
 
-    _setIP(request) {
-        if (/@[^\/]+\//.test(request.url)) {
-            this.room = decodeURIComponent(request.url.match(/@([^\/]+)\//)[1]);
+    _setRoom(request) {
+        let match = request.url.match(/@([^\/]+)\//);
+        if (match) {
+            this.room = decodeURIComponent(match[1]);
         } else {
-            this.room = '';
+            this.room = '未命名';
         }
     }
 
@@ -325,8 +344,11 @@ class Peer {
         if (ua.browser.name) deviceName += ua.browser.name;
         if (!deviceName) deviceName = 'Unknown Device';
         let displayName = '';
-        if (/^\/[^@]*@/.test(request.url)) {
-            displayName = decodeURIComponent(request.url.match(/\/([^@]*)@/)[1]);
+        let match = request.url.match(/\/([^@]*)@/);
+        if (match) displayName = decodeURIComponent(match[1]);
+        if (!displayName) {
+            const nameGenerator = require('./nameGenerator.js');
+            displayName = nameGenerator.getName(this.id);
         }
         this.name = {
             model: ua.device.model,
@@ -335,16 +357,7 @@ class Peer {
             type: ua.device.type,
             deviceName,
             displayName
-        };
-        if (!displayName) this.setDispName();
-    }
-
-    setDispName(newName){
-        if (!newName) {
-            const nameGenerator = require('./nameGenerator.js');
-            newName = nameGenerator.getName(this.id);
         }
-        this.name.displayName = newName;
     }
 
     getInfo() {

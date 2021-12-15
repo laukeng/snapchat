@@ -8,11 +8,7 @@ var server;
 var roomName;
 var nickName;
 var myId;
-
-function replaceURLWithHTMLLinks(text) {
-    var exp = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/i;
-    return text.replace(exp, '<a target="_blank" href="$1">$1</a>');
-}
+console.log(getComputedStyle(document.documentElement).getPropertyValue('--display-trash'));
 
 Date.prototype.format = function (fmt) {
     var o = {
@@ -45,9 +41,32 @@ HTMLElement.prototype.appendHTML = function (html) {
     fragment = null;
 };
 
-function setTitle(count) {
-    $('room-title').innerText = roomName + '(' + count + ')';
-}
+Events.on('load', e => {
+    const peersUI = new PeersUI();
+    const joinRoomDialog = new JoinRoomDialog();
+    const receiveDialog = new ReceiveDialog();
+    const sendTextDialog = new SendTextDialog();
+    const receiveTextDialog = new ReceiveTextDialog();
+    //const notifications = new Notifications();
+    const networkStatusUI = new NetworkStatusUI();
+    const webShareTargetUI = new WebShareTargetUI();
+    const toast = new Toast();
+    if (joinRoomDialog.$textRoom.value && joinRoomDialog.$textName.value) {
+        roomName = joinRoomDialog.$textRoom.value;
+        nickName = joinRoomDialog.$textName.value;
+        server = new ServerConnection(roomName, nickName);
+    } else {
+        joinRoomDialog.show();
+    };
+    $('pub-msg-button').addEventListener('click', pubMsg);
+    $('delete').addEventListener('click', function () {
+        if (getComputedStyle(document.documentElement).getPropertyValue('--display-trash') == 'none') {
+            document.documentElement.style.setProperty('--display-trash', 'block');
+        } else {
+            document.documentElement.style.setProperty('--display-trash', 'none');
+        }
+    });
+});
 
 // set display name
 Events.on('display-name', e => {
@@ -62,14 +81,16 @@ Events.on('display-name', e => {
 
 Events.on('history-msgs', e => {
     const msgs = e.detail.msgs;
-    //if (!Object.keys(msgs).length) return;
-    //$('chat-room-content').innerHTML = '';
-    var msgHtml; // = '<div class="chat-room-tip">-- ' + nickName + ' 欢迎您加入本群 --</div>'
-    //$('chat-room-content').appendHTML(msgHtml);
+    let msgHtml;
     for (let time in msgs) {
         let msg = msgs[time];
         let divClass = msg.sender == myId ? 'me' : 'other';
-        msgHtml = '<div class="chat-room-' + divClass + '"><div class="chat-room-msg">' +
+        let delBtnHtml = '';
+        if (msg.sender == myId) {
+            delBtnHtml = '<div class="chat-room-msg-btn"><a class="icon-button" title="删除消息" onclick="delMsg(' + time + ')">' +
+                '<svg class="icon"><use xlink:href="#icon-trash"></use></svg></a></div>'
+        };
+        msgHtml = '<div id="' + time + '" class="chat-room-' + divClass + ' ' + msg.sender + '">' + delBtnHtml + '<div class="chat-room-msg">' +
             '<span class="chat-room-msg-time">' + new Date(parseInt(time)).format("yyyy-MM-dd hh:mm:ss") + '</span></br>' +
             '<span class="chat-room-msg-name">' + msg.name + ' : </span>' +
             '<span class="chat-room-msg-text">' + replaceURLWithHTMLLinks(msg.text) + '</span>' +
@@ -81,7 +102,7 @@ Events.on('history-msgs', e => {
 
 Events.on('peers', e => {
     const msg = e.detail;
-    setTitle(msg.length + 1);
+    $('room-title').innerText = roomName + '(' + (msg.length + 1) + ')';
 });
 
 Events.on('peer-joined', e => {
@@ -89,7 +110,7 @@ Events.on('peer-joined', e => {
     let msgHtml = '<div class="chat-room-tip">-- ' + decodeURIComponent(msg.peer.name.displayName) + ' 加入了群聊 --</div>'
     $('chat-room-content').appendHTML(msgHtml);
     $('chat-room-box').scrollTop = $('chat-room-box').scrollHeight;
-    setTitle(msg.count + 1);
+    $('room-title').innerText = roomName + '(' + (msg.count + 1) + ')';
 });
 
 Events.on('peer-left', e => {
@@ -97,17 +118,30 @@ Events.on('peer-left', e => {
     let msgHtml = '<div class="chat-room-tip">-- ' + decodeURIComponent(msg.peerName) + ' 退出了群聊 --</div>'
     $('chat-room-content').appendHTML(msgHtml);
     $('chat-room-box').scrollTop = $('chat-room-box').scrollHeight;
-    setTitle(msg.count);
+    $('room-title').innerText = roomName + '(' + msg.count + ')';
 });
 
 Events.on('msg-received', e => {
     const msg = e.detail;
-    $(msg.id).style.background = 'var(--msg-bg-color-me)';
+    if ($(msg.id)) {
+        $(msg.id).querySelector('.chat-room-msg').style.background = 'var(--msg-bg-color-me)';
+        $(msg.id).querySelector('.icon-button').setAttribute('onclick','delMsg(' + msg.time + ')');
+        $(msg.id).id = msg.time;
+    };
 });
 
-Events.on('show-msg', e => {
+Events.on('show-msg', e => { //当接收到服务器群发的一条消息
     const msg = e.detail;
-    let msgHtml = '<div class="chat-room-other"><div class="chat-room-msg">' +
+    let delCmd = msg.text.match(/^\/del:(.+)/);
+        if (delCmd) {
+            if (delCmd[1] == 'all') {
+                delMsgs(msg.sender);
+            } else {
+                if ($(delCmd[1])) $(delCmd[1]).querySelector('.chat-room-msg-text').innerHTML = '<span class="chat-room-msg-text-del">[此消息已被删除]</span>';
+            };
+            return;
+        };
+    let msgHtml = '<div id="' + msg.time + '" class="chat-room-other ' + msg.sender + '"><div class="chat-room-msg">' +
         '<span class="chat-room-msg-time">' + new Date(parseInt(msg.time)).format("yyyy-MM-dd hh:mm:ss") + '</span></br>' +
         '<span class="chat-room-msg-name">' + msg.name + ' : </span>' +
         '<span class="chat-room-msg-text">' + replaceURLWithHTMLLinks(msg.text) + '</span>' +
@@ -116,16 +150,76 @@ Events.on('show-msg', e => {
     $('chat-room-box').scrollTop = $('chat-room-box').scrollHeight;
 });
 
-function showMyMsg(text, id) {
-    let msgHtml = '<div class="chat-room-me"><div id="' + id + '" class="chat-room-msg">' +
+function replaceURLWithHTMLLinks(text) {
+    var exp = /(\b(https?|ftp|file):\/\/[-A-Z0-9+&@#\/%?=~_|!:,.;]*[-A-Z0-9+&@#\/%=~_|])/i;
+    return text.replace(exp, '<a target="_blank" href="$1">$1</a>');
+}
+
+function delMsgs(sender){
+    var els = document.getElementsByClassName(sender);
+    for (let i = 0; i < els.length; i++) {
+        els[i].querySelector('.chat-room-msg-text').innerHTML = '<span class="chat-room-msg-text-del">[此消息已被删除]</span>';
+    }
+}
+
+function delMsg(msgId){
+    if (server) {
+        let timeStamp = Date.now();
+        let success = server.send({
+            type: 'pub',
+            name: nickName,
+            time: timeStamp,
+            text: '/del:' + msgId
+        });
+        if (success) {
+            if ($(msgId)) $(msgId).querySelector('.chat-room-msg-text').innerHTML = '<span class="chat-room-msg-text-del">[此消息已被删除]</span>';
+        } else {
+            Events.fire('notify-user', '无法删除消息');
+        }
+    } else {
+        Events.fire('notify-user', '未连接到服务器');
+    }
+}
+
+function showMyMsg(text, id) { //显示自己发出的消息
+    let delBtnHtml = '<div class="chat-room-msg-btn"><a class="icon-button" title="删除消息">' +
+        '<svg class="icon"><use xlink:href="#icon-trash"></use></svg></a></div>'
+    let msgHtml = '<div id="' + id + '" class="chat-room-me ' + myId + '">' + delBtnHtml + '<div class="chat-room-msg">' +
         '<span class="chat-room-msg-time">' + new Date(parseInt(id)).format("yyyy-MM-dd hh:mm:ss") + '</span></br>' +
         '<span class="chat-room-msg-name">' + nickName + ' : </span>' +
         '<span class="chat-room-msg-text">' + replaceURLWithHTMLLinks(text) + '</span>' +
         '</div></div>';
     $('chat-room-content').appendHTML(msgHtml);
     $('chat-room-box').scrollTop = $('chat-room-box').scrollHeight;
-    $(id).style.background = '#ee9911';
+    $(id).querySelector('.chat-room-msg').style.background = '#ee9911';
 }
+
+function pubMsg() {
+    if ($('pub-msg-text').innerText != '') {
+        if (server) {
+            let timeStamp = Date.now();
+            let success = server.send({
+                type: 'pub',
+                name: nickName,
+                time: timeStamp,
+                text: $('pub-msg-text').innerText
+            });
+            if (success) {
+                if ($('pub-msg-text').innerText == '/del:all') {
+                    delMsgs(myId);
+                } else {
+                    showMyMsg($('pub-msg-text').innerText, timeStamp);
+                }
+                $('pub-msg-text').innerText = '';
+            } else {
+                Events.fire('notify-user', '无法发送消息');
+            }
+        } else {
+            Events.fire('notify-user', '未连接到服务器');
+        }
+    }
+}
+
 
 class PeersUI {
 
@@ -670,51 +764,6 @@ class WebShareTargetUI {
     }
 }
 
-function onLoad() {
-    const peersUI = new PeersUI();
-    const joinRoomDialog = new JoinRoomDialog();
-    const receiveDialog = new ReceiveDialog();
-    const sendTextDialog = new SendTextDialog();
-    const receiveTextDialog = new ReceiveTextDialog();
-    const notifications = new Notifications();
-    const networkStatusUI = new NetworkStatusUI();
-    const webShareTargetUI = new WebShareTargetUI();
-    const toast = new Toast();
-    if (joinRoomDialog.$textRoom.value && joinRoomDialog.$textName.value) {
-        roomName = joinRoomDialog.$textRoom.value;
-        nickName = joinRoomDialog.$textName.value;
-        server = new ServerConnection(roomName, nickName);
-    } else {
-        joinRoomDialog.show();
-    };
-}
-
-Events.on('load', onLoad);
-
-function pubMsg() {
-    if ($('pub-msg-text').innerText != '') {
-        if (server) {
-            let timeStamp = Date.now();
-            let success = server.send({
-                type: 'pub',
-                name: nickName,
-                time: timeStamp,
-                text: $('pub-msg-text').innerText
-            });
-            if (success) {
-                showMyMsg($('pub-msg-text').innerText, timeStamp);
-                $('pub-msg-text').innerText = '';
-            } else {
-                Events.fire('notify-user', '无法发送消息');
-            }
-        } else {
-            Events.fire('notify-user', '未连接到服务器');
-        }
-    }
-}
-
-$('pub-msg-button').addEventListener('click', pubMsg);
-
 if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('/service-worker.js')
         .then(serviceWorker => {
@@ -741,8 +790,8 @@ as the user has dismissed the permission prompt several times.
 This can be reset in Page Info
 which can be accessed by clicking the lock icon next to the URL.`;
 
-document.body.onclick = e => { // safari hack to fix audio
-    document.body.onclick = null;
-    if (!(/.*Version.*Safari.*/.test(navigator.userAgent))) return;
-    blop.play();
-}
+// document.body.onclick = e => { // safari hack to fix audio
+//     document.body.onclick = null;
+//     if (!(/.*Version.*Safari.*/.test(navigator.userAgent))) return;
+//     blop.play();
+// }

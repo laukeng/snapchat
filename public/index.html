@@ -24,8 +24,6 @@
     <link rel="apple-touch-icon" href="images/apple-touch-icon.png">
     <meta name="msapplication-TileImage" content="images/mstile-150x150.png">
     <link rel="fluid-icon" type="image/png" href="images/android-chrome-192x192.png">
-    <meta name="twitter:image" content="https://snapchat.net/images/twitter-stream.jpg">
-    <meta property="og:image" content="https://snapchat.net/images/twitter-stream.jpg">
     <!-- Resources -->
     <link rel="stylesheet" type="text/css" href="styles.css">
     <link rel="manifest" href="manifest.json">
@@ -45,16 +43,21 @@
                     <use xlink:href="#icon-enter"></use>
                 </svg>
             </a>
+            <a id="delete" class="icon-button" title="删除消息">
+                <svg class="icon">
+                    <use xlink:href="#icon-trash"></use>
+                </svg>
+            </a>
             <a href="#" id="theme" class="icon-button" title="切换主题">
                 <svg class="icon">
                     <use xlink:href="#icon-contrast" />
                 </svg>
             </a>
-            <a href="#" id="notification" class="icon-button" title="启用通知" hidden>
+            <!-- <a href="#" id="notification" class="icon-button" title="启用通知" hidden>
                 <svg class="icon">
                     <use xlink:href="#icon-bell" />
                 </svg>
-            </a>
+            </a> -->
             <a href="#" id="install" class="icon-button" title="桌面图标" hidden>
                 <svg class="icon">
                     <use xlink:href="#homescreen" />
@@ -62,17 +65,18 @@
             </a>
         </div>
     </header>
+    <div id="tip" style="display:none">
+        <span id="tip-text"></span><span id="close-tip"><a title="关闭提示">我知道了</a></span>
+    </div>
     <!-- 聊天记录 -->
     <div id="chat-room-box">
-        <div id="warning" style="display:none">
-            <span id="warning-text"></span><span id="close-warning"><a title="关闭提示">我知道了</a></span>
-        </div>
         <div id="chat-room-content">
             <div class="chat-room-tip">-- 欢迎使用SnapChat --</div>
             <div class="chat-room-other">
                 <div class="chat-room-msg">
-                    <span class="chat-room-msg-name">SnapChat:</span>
-                    <span class="chat-room-msg-text"><br/>    这是一个使用浏览器进行群聊的网页应用。加入群聊无需注册，只要输入群聊名称和自己的昵称就能加入群聊。由于没有用户认证，昵称可以随意设置，所以名字叫张三的人不一定就是张三。关闭本页面会自动退出群聊，服务器只保留最近三天的聊天记录。
+                    <span class="chat-room-msg-name">关于SnapChat : </span>
+                    <span class="chat-room-msg-text">这是一个使用浏览器进行群聊的网页应用。无需下载安装三方应用，也无需注册，只要输入群聊名称和自己的昵称就能加入群聊。用户没有设置头像的功能，但是可以在昵称中使用Emoji表情来代替头像。由于没有用户认证，昵称可以随意设置，所以名字叫张三的人不一定就是张三。
+    关闭本页面会自动退出群聊，服务器只保留最近三天的聊天记录。点击删除图标可以删除自己发出的信息，群内所有在线的成员都会自动同步删除你所删掉的信息。你还可以发送指令"/del:all"来一次性删除自己发出的所有信息。
     由于服务器性能限制，群聊中不支持发送图片和视频等多媒体文件。如需发送文件，可以在群成员列表页面中点击对方图标进行点对点传送。另外因受到浏览器兼容性和复杂的内网环境等因素，并非所有的群成员之间都能建立点对点的通讯，所以群成员列表中只显示已经建立起了点对点连接的用户。
     程序源码遵循GPL3.0协议发布，本应用仅作学习和测试使用。请用户在聊天过程中自觉遵守所在国家或地区的相关法律法规。</span>
                 </div>
@@ -243,6 +247,10 @@
         <symbol id="icon-users" viewBox="0 0 36 32">
             <path d="M24 24.082v-1.649c2.203-1.241 4-4.337 4-7.432 0-4.971 0-9-6-9s-6 4.029-6 9c0 3.096 1.797 6.191 4 7.432v1.649c-6.784 0.555-12 3.888-12 7.918h28c0-4.030-5.216-7.364-12-7.918z"></path>
             <path d="M10.225 24.854c1.728-1.13 3.877-1.989 6.243-2.513-0.47-0.556-0.897-1.176-1.265-1.844-0.95-1.726-1.453-3.627-1.453-5.497 0-2.689 0-5.228 0.956-7.305 0.928-2.016 2.598-3.265 4.976-3.734-0.529-2.39-1.936-3.961-5.682-3.961-6 0-6 4.029-6 9 0 3.096 1.797 6.191 4 7.432v1.649c-6.784 0.555-12 3.888-12 7.918h8.719c0.454-0.403 0.956-0.787 1.506-1.146z"></path>
+        </symbol>
+        <symbol id="icon-trash" viewBox="0 0 32 32">
+            <path d="M4 10v20c0 1.1 0.9 2 2 2h18c1.1 0 2-0.9 2-2v-20h-22zM10 28h-2v-14h2v14zM14 28h-2v-14h2v14zM18 28h-2v-14h2v14zM22 28h-2v-14h2v14z"></path>
+            <path d="M26.5 4h-6.5v-2.5c0-0.825-0.675-1.5-1.5-1.5h-7c-0.825 0-1.5 0.675-1.5 1.5v2.5h-6.5c-0.825 0-1.5 0.675-1.5 1.5v2.5h26v-2.5c0-0.825-0.675-1.5-1.5-1.5zM18 4h-6v-1.975h6v1.975z"></path>
         </symbol>
     </svg>
     <!-- Scripts -->
