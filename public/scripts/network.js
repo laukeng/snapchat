@@ -91,7 +91,7 @@ class ServerConnection {
             this._socket.onclose = null;
             this._socket.close();
             this._connect();
-        };
+        }
     }
 
     _endpoint() {

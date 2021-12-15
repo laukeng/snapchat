@@ -145,7 +145,7 @@ Events.on('show-msg', e => { //当接收到服务器群发的一条消息
         if (delCmd[1] == 'all') {
             delMsgs(msg.sender);
         } else {
-            if ($(delCmd[1])) $(delCmd[1]).querySelector('.chat-room-msg-text').innerHTML = '<span class="chat-room-msg-text-del">[此消息已被删除]</span>';
+            if ($(delCmd[1])) $(delCmd[1]).querySelector('.chat-room-msg-text').outerHTML = '<span class="chat-room-msg-text-del">[此消息已被删除]</span>';
         };
         return;
     };
@@ -166,7 +166,7 @@ function replaceURLWithHTMLLinks(text) {
 function delMsgs(sender) {
     let els = document.getElementsByClassName(sender);
     for (let i = 0; i < els.length; i++) {
-        els[i].querySelector('.chat-room-msg-text').innerHTML = '<span class="chat-room-msg-text-del">[此消息已被删除]</span>';
+        els[i].querySelector('.chat-room-msg-text').outerHTML = '<span class="chat-room-msg-text-del">[此消息已被删除]</span>';
     }
 }
 
@@ -180,7 +180,7 @@ function delMsg(msgId) {
             text: '/del:' + msgId
         });
         if (success) {
-            if ($(msgId)) $(msgId).querySelector('.chat-room-msg-text').innerHTML = '<span class="chat-room-msg-text-del">[此消息已被删除]</span>';
+            if ($(msgId)) $(msgId).querySelector('.chat-room-msg-text').outerHTML = '<span class="chat-room-msg-text-del">[此消息已被删除]</span>';
         } else {
             Events.fire('notify-user', '无法删除消息');
         }
