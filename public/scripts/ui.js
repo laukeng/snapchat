@@ -20,12 +20,14 @@ Date.prototype.format = function (fmt) {
         "q+": Math.floor((this.getMonth() + 3) / 3), // 季度
         "S": this.getMilliseconds() // 毫秒
     };
-    if (/(y+)/.test(fmt))
+    if (/(y+)/.test(fmt)) {
         fmt = fmt.replace(RegExp.$1, (this.getFullYear() + "").substr(4 - RegExp.$1.length));
-    for (let k in o)
+    };
+    for (let k in o) {
         if (new RegExp("(" + k + ")").test(fmt)) fmt = fmt.replace(RegExp.$1, (RegExp.$1.length == 1) ? (o[k]) : (("00" + o[k]).substr(("" + o[k]).length)));
+    };
     return fmt;
-}
+};
 
 HTMLElement.prototype.appendHTML = function (html) {
     let divTemp = document.createElement("div"),
@@ -59,7 +61,7 @@ Events.on('load', e => {
         joinRoomDialog.show();
     };
     $('pub-msg-button').addEventListener('click', pubMsg);
-    $('pub-msg-text').onkeydown = function(ev){
+    $('pub-msg-text').onkeydown = function (ev) {
         let oEvent = ev || event;
         if (oEvent.keyCode == 13 && oEvent.ctrlKey) {
             pubMsg();
@@ -80,7 +82,7 @@ Events.on('display-name', e => {
     nickName = decodeURIComponent(msg.dispName);
     myId = msg.peerId;
     $('nameInput').value = nickName;
-    let msgHtml = '<div class="chat-room-tip">-- ' + nickName + ' 欢迎您加入本群 --</div>'
+    let msgHtml = '<div class="chat-room-tip">-- ' + nickName + ' 欢迎您加入本群 --</div>';
     $('chat-room-content').appendHTML(msgHtml);
     $('chat-room-box').scrollTop = $('chat-room-box').scrollHeight;
 });
@@ -102,7 +104,7 @@ Events.on('history-msgs', e => {
             '<span class="chat-room-msg-text">' + replaceURLWithHTMLLinks(msg.text) + '</span>' +
             '</div></div>';
         $('chat-room-content').appendHTML(msgHtml);
-    }
+    };
     $('chat-room-box').scrollTop = $('chat-room-box').scrollHeight;
 });
 
@@ -113,7 +115,7 @@ Events.on('peers', e => {
 
 Events.on('peer-joined', e => {
     const msg = e.detail;
-    let msgHtml = '<div class="chat-room-tip">-- ' + decodeURIComponent(msg.peer.name.displayName) + ' 加入了群聊 --</div>'
+    let msgHtml = '<div class="chat-room-tip">-- ' + decodeURIComponent(msg.peer.name.displayName) + ' 加入了群聊 --</div>';
     $('chat-room-content').appendHTML(msgHtml);
     $('chat-room-box').scrollTop = $('chat-room-box').scrollHeight;
     $('room-title').innerText = roomName + '(' + (msg.count + 1) + ')';
@@ -121,7 +123,7 @@ Events.on('peer-joined', e => {
 
 Events.on('peer-left', e => {
     const msg = e.detail;
-    let msgHtml = '<div class="chat-room-tip">-- ' + decodeURIComponent(msg.peerName) + ' 退出了群聊 --</div>'
+    let msgHtml = '<div class="chat-room-tip">-- ' + decodeURIComponent(msg.peerName) + ' 退出了群聊 --</div>';
     $('chat-room-content').appendHTML(msgHtml);
     $('chat-room-box').scrollTop = $('chat-room-box').scrollHeight;
     $('room-title').innerText = roomName + '(' + msg.count + ')';
@@ -131,7 +133,7 @@ Events.on('msg-received', e => {
     const msg = e.detail;
     if ($(msg.id)) {
         $(msg.id).querySelector('.chat-room-msg').style.background = 'var(--msg-bg-color-me)';
-        $(msg.id).querySelector('.icon-button').setAttribute('onclick','delMsg(' + msg.time + ')');
+        $(msg.id).querySelector('.icon-button').setAttribute('onclick', 'delMsg(' + msg.time + ')');
         $(msg.id).id = msg.time;
     };
 });
@@ -139,14 +141,14 @@ Events.on('msg-received', e => {
 Events.on('show-msg', e => { //当接收到服务器群发的一条消息
     const msg = e.detail;
     let delCmd = msg.text.match(/^\/del:(.+)/);
-        if (delCmd) {
-            if (delCmd[1] == 'all') {
-                delMsgs(msg.sender);
-            } else {
-                if ($(delCmd[1])) $(delCmd[1]).querySelector('.chat-room-msg-text').innerHTML = '<span class="chat-room-msg-text-del">[此消息已被删除]</span>';
-            };
-            return;
+    if (delCmd) {
+        if (delCmd[1] == 'all') {
+            delMsgs(msg.sender);
+        } else {
+            if ($(delCmd[1])) $(delCmd[1]).querySelector('.chat-room-msg-text').innerHTML = '<span class="chat-room-msg-text-del">[此消息已被删除]</span>';
         };
+        return;
+    };
     let msgHtml = '<div id="' + msg.time + '" class="chat-room-other ' + msg.sender + '"><div class="chat-room-msg">' +
         '<span class="chat-room-msg-time">' + new Date(parseInt(msg.time)).format("yyyy-MM-dd hh:mm:ss") + '</span></br>' +
         '<span class="chat-room-msg-name">' + msg.name + ' : </span>' +
@@ -161,14 +163,14 @@ function replaceURLWithHTMLLinks(text) {
     return text.replace(exp, '<a target="_blank" href="$1">$1</a>');
 }
 
-function delMsgs(sender){
+function delMsgs(sender) {
     let els = document.getElementsByClassName(sender);
     for (let i = 0; i < els.length; i++) {
         els[i].querySelector('.chat-room-msg-text').innerHTML = '<span class="chat-room-msg-text-del">[此消息已被删除]</span>';
     }
 }
 
-function delMsg(msgId){
+function delMsg(msgId) {
     if (server) {
         let timeStamp = Date.now();
         let success = server.send({
@@ -189,7 +191,7 @@ function delMsg(msgId){
 
 function showMyMsg(text, id) { //显示自己发出的消息
     let delBtnHtml = '<div class="chat-room-msg-btn"><a class="icon-button" title="删除消息">' +
-        '<svg class="icon"><use xlink:href="#icon-trash"></use></svg></a></div>'
+        '<svg class="icon"><use xlink:href="#icon-trash"></use></svg></a></div>';
     let msgHtml = '<div id="' + id + '" class="chat-room-me ' + myId + '">' + delBtnHtml + '<div class="chat-room-msg">' +
         '<span class="chat-room-msg-time">' + new Date(parseInt(id)).format("yyyy-MM-dd hh:mm:ss") + '</span></br>' +
         '<span class="chat-room-msg-name">' + nickName + ' : </span>' +
@@ -418,7 +420,7 @@ class PeerUI {
 class Dialog {
     constructor(id) {
         this.$el = $(id);
-        this.$el.querySelectorAll('[close]').forEach(el => el.addEventListener('click', e => this.hide()))
+        this.$el.querySelectorAll('[close]').forEach(el => el.addEventListener('click', e => this.hide()));
         this.$autoFocus = this.$el.querySelector('[autofocus]');
     }
 
@@ -474,8 +476,8 @@ class ReceiveDialog extends Dialog {
         $a.download = file.name;
 
         if (this._autoDownload()) {
-            $a.click()
-            return
+            $a.click();
+            return;
         }
         if (file.mime.split('/')[0] === 'image') {
             console.log('the file is image');
@@ -515,7 +517,7 @@ class ReceiveDialog extends Dialog {
     }
 
     _autoDownload() {
-        return !this.$el.querySelector('#autoDownload').checked
+        return !this.$el.querySelector('#autoDownload').checked;
     }
 }
 
@@ -603,7 +605,7 @@ class SendTextDialog extends Dialog {
 class ReceiveTextDialog extends Dialog {
     constructor() {
         super('receiveTextDialog');
-        Events.on('text-received', e => this._onText(e.detail))
+        Events.on('text-received', e => this._onText(e.detail));
         this.$text = this.$el.querySelector('#text');
         const $copy = this.$el.querySelector('#copy');
         copy.addEventListener('click', _ => this._onCopy());
@@ -783,7 +785,7 @@ window.addEventListener('beforeinstallprompt', e => {
         // don't display install banner when installed
         return e.preventDefault();
     } else {
-        const btn = document.querySelector('#install')
+        const btn = document.querySelector('#install');
         btn.hidden = false;
         btn.onclick = _ => e.prompt();
         return e.preventDefault();

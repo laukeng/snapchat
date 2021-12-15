@@ -58,7 +58,7 @@ app.get('*', (req, res) => {
 });
 
 const server = http.createServer(app);
-(!publicRun == "public") ? server.listen(port): server.listen(port, '0.0.0.0');
+(!publicRun == "public") ? server.listen(port) : server.listen(port, '0.0.0.0');
 console.log(new Date().toISOString(), ' Snapchat is running on port', port);
 
 
@@ -66,7 +66,7 @@ class SnapchatServer {
 
     constructor() {
         const WebSocket = require('ws');
-        this._wss = new WebSocket.Server({server});
+        this._wss = new WebSocket.Server({ server });
         this._wss.on('connection', (socket, request) => this._onConnection(new Peer(socket, request)));
         this._wss.on('headers', (headers, response) => this._onHeaders(headers, response));
         this._rooms = {};
@@ -79,7 +79,7 @@ class SnapchatServer {
         this._joinRoom(peer);
         peer.socket.on('message', message => this._onMessage(peer, message));
         this._keepAlive(peer);
-        this._sendDispName(peer)
+        this._sendDispName(peer);
     }
 
     _onHeaders(headers, response) {
@@ -146,7 +146,7 @@ class SnapchatServer {
         message.time = serverTime; //将消息的时间戳替换成服务器时间
         message.sender = sender.id;
         for (const peerId in this._rooms[sender.room]) { //群发消息给其他群成员
-            if (sender.id != peerId) this._send(this._rooms[sender.room][peerId], message)
+            if (sender.id != peerId) this._send(this._rooms[sender.room][peerId], message);
         };
         for (const timeId in this._msgs[sender.room]) { //删除72小时之前的记录
             if (Date.now() - timeId > this._timeDelMsgs) {
@@ -169,10 +169,10 @@ class SnapchatServer {
                         this._msgs[sender.room][timeId].text = '<span class="chat-room-msg-text-del">[此消息已被删除]</span>';
                         break;
                     }
-                };
+                }
             }
         } else { //如果不是指令，则添加到对象：_msgs[roomID]，然后添加到数据库
-            if (!this._msgs[sender.room]) this._msgs[sender.room] = {}; 
+            if (!this._msgs[sender.room]) this._msgs[sender.room] = {};
             this._msgs[sender.room][message.time] = {
                 sender: sender.id,
                 name: message.name,
@@ -230,7 +230,7 @@ class SnapchatServer {
                         type: 'peer-joined',
                         peer: peer.getInfo(),
                         count: count
-                    })
+                    });
                 }
             }
 
@@ -261,7 +261,7 @@ class SnapchatServer {
                 delete this._msgs[peer.room];
             } else { //如果消息记录不为空，最后一个成员退出房间之后设置定时器延时72小时删除房间和消息对象
                 this._timer[peer.room] = setTimeout(() => this._delMsgs(peer.room), this._timeDelMsgs);
-            };
+            }
         } else {
             const count = Object.keys(this._rooms[peer.room]).length;
             // notify all other peers
@@ -300,7 +300,7 @@ class SnapchatServer {
             this._leaveRoom(peer);
             return;
         }
-        this._send(peer, {type: 'ping'});
+        this._send(peer, { type: 'ping' });
         peer.timerId = setTimeout(() => this._keepAlive(peer), timeout);
     }
 
@@ -334,7 +334,7 @@ class Peer {
     }
 
     toString() {
-        return `<Peer id=${this.id} ip=${this.room} rtcSupported=${this.rtcSupported}>`
+        return `<Peer id=${this.id} ip=${this.room} rtcSupported=${this.rtcSupported}>`;
     }
 
     _setName(request) {
@@ -392,7 +392,7 @@ class Peer {
             }
         }
         return uuid;
-    };
+    }
 }
 
 new SnapchatServer();
