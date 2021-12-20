@@ -120,7 +120,7 @@ Events.on('peers', e => {
 
 Events.on('peer-joined', e => {
     const msg = e.detail;
-    $('room-title').innerText = roomName + '(' + (msg.count) + ')';
+    $('room-title').innerText = roomName + '(' + msg.count + ')';
     Events.fire('notify-user', decodeURIComponent(msg.peer.name.displayName) + ' 加入了群聊');
 });
 

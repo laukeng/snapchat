@@ -223,7 +223,7 @@ class SnapchatServer {
         } else {
             // notify all other peers
             const otherPeers = [];
-            const count = Object.keys(this._rooms[peer.room]).length;
+            const count = Object.keys(this._rooms[peer.room]).length + 1;
             for (const peerId in this._rooms[peer.room]) {
                 if (peerId != peer.id) {
                     otherPeers.push(this._rooms[peer.room][peerId].getInfo());
