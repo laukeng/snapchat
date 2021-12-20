@@ -203,7 +203,7 @@ function showMyMsg(text, id) { //显示自己发出的消息
     let msgHtml = `
         <div id="${id}" class="chat-room-me ${myId}">
             <div class="chat-room-msg-btn">
-                <a class="icon-button" title="删除消息">' +
+                <a class="icon-button" title="删除消息">
                     <svg class="icon"><use xlink:href="#icon-trash"></use></svg>
                 </a>
             </div>
