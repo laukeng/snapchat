@@ -1,7 +1,7 @@
-var userAgent = navigator.userAgent.toLowerCase();
-var divWarning = document.getElementById("tip");
-var divWarningText = document.getElementById("tip-text");
-var closeWarning = document.getElementById("close-tip");
+let userAgent = navigator.userAgent.toLowerCase();
+let divWarning = document.getElementById("tip");
+let divWarningText = document.getElementById("tip-text");
+let closeWarning = document.getElementById("close-tip");
 //localStorage.setItem("tipRead", '');
 closeWarning.addEventListener('click', function () {
     divWarning.style.display = "none";

@@ -1,6 +1,6 @@
 window.URL = window.URL || window.webkitURL;
 window.isRtcSupported = !!(window.RTCPeerConnection || window.mozRTCPeerConnection || window.webkitRTCPeerConnection);
-var peersManager;
+let peersManager;
 
 class ServerConnection {
 

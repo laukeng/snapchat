@@ -4,11 +4,10 @@ const isURL = text => /^((https?:\/\/|www)[^\s]+)/g.test(text.toLowerCase());
 window.isDownloadSupported = (typeof document.createElement('a').download !== 'undefined');
 window.isProductionEnvironment = !window.location.host.startsWith('localhost');
 window.iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-var server;
-var roomName;
-var nickName;
-var myId;
-console.log(getComputedStyle(document.documentElement).getPropertyValue('--display-trash'));
+let server;
+let roomName;
+let nickName;
+let myId;
 
 Date.prototype.format = function (fmt) {
     let o = {
@@ -49,7 +48,6 @@ Events.on('load', e => {
     const receiveDialog = new ReceiveDialog();
     const sendTextDialog = new SendTextDialog();
     const receiveTextDialog = new ReceiveTextDialog();
-    //const notifications = new Notifications();
     const networkStatusUI = new NetworkStatusUI();
     const webShareTargetUI = new WebShareTargetUI();
     const toast = new Toast();
@@ -67,6 +65,7 @@ Events.on('load', e => {
             pubMsg();
         }
     };
+    document.documentElement.style.setProperty('--display-trash', 'none');
     $('delete').addEventListener('click', function () {
         if (getComputedStyle(document.documentElement).getPropertyValue('--display-trash') == 'none') {
             document.documentElement.style.setProperty('--display-trash', 'block');
@@ -145,7 +144,7 @@ Events.on('show-msg', e => { //当接收到服务器群发的一条消息
         if (delCmd[1] == 'all') {
             delMsgs(msg.sender);
         } else {
-            if ($(delCmd[1])) $(delCmd[1]).querySelector('.chat-room-msg-text').outerHTML = '<span class="chat-room-msg-text-del">[此消息已被删除]</span>';
+            if ($(delCmd[1])) $(delCmd[1]).querySelector('.chat-room-msg-text').innerHTML = '<span class="chat-room-msg-text-del">[此消息已被删除]</span>';
         };
         return;
     };
@@ -166,7 +165,7 @@ function replaceURLWithHTMLLinks(text) {
 function delMsgs(sender) {
     let els = document.getElementsByClassName(sender);
     for (let i = 0; i < els.length; i++) {
-        els[i].querySelector('.chat-room-msg-text').outerHTML = '<span class="chat-room-msg-text-del">[此消息已被删除]</span>';
+        els[i].querySelector('.chat-room-msg-text').innerHTML = '<span class="chat-room-msg-text-del">[此消息已被删除]</span>';
     }
 }
 
@@ -180,7 +179,7 @@ function delMsg(msgId) {
             text: '/del:' + msgId
         });
         if (success) {
-            if ($(msgId)) $(msgId).querySelector('.chat-room-msg-text').outerHTML = '<span class="chat-room-msg-text-del">[此消息已被删除]</span>';
+            if ($(msgId)) $(msgId).querySelector('.chat-room-msg-text').innerHTML = '<span class="chat-room-msg-text-del">[此消息已被删除]</span>';
         } else {
             Events.fire('notify-user', '无法删除消息');
         }
@@ -647,94 +646,6 @@ class Toast extends Dialog {
 }
 
 
-class Notifications {
-
-    constructor() {
-        // Check if the browser supports notifications
-        if (!('Notification' in window)) return;
-
-        // Check whether notification permissions have already been granted
-        if (Notification.permission !== 'granted') {
-            this.$button = $('notification');
-            this.$button.removeAttribute('hidden');
-            this.$button.addEventListener('click', e => this._requestPermission());
-        }
-        Events.on('text-received', e => this._messageNotification(e.detail.text));
-        Events.on('file-received', e => this._downloadNotification(e.detail.name));
-    }
-
-    _requestPermission() {
-        Notification.requestPermission(permission => {
-            if (permission !== 'granted') {
-                Events.fire('notify-user', Notifications.PERMISSION_ERROR || 'Error');
-                return;
-            }
-            this._notify('更简单的分享！');
-            this.$button.setAttribute('hidden', 1);
-        });
-    }
-
-    _notify(message, body, closeTimeout = 20000) {
-        const config = {
-            body: body,
-            icon: '/images/logo_transparent_128x128.png',
-        }
-        let notification;
-        try {
-            notification = new Notification(message, config);
-        } catch (e) {
-            // Android doesn't support "new Notification" if service worker is installed
-            if (!serviceWorker || !serviceWorker.showNotification) return;
-            notification = serviceWorker.showNotification(message, config);
-        }
-
-        // Notification is persistent on Android. We have to close it manually
-        if (closeTimeout) {
-            setTimeout(_ => notification.close(), closeTimeout);
-        }
-
-        return notification;
-    }
-
-    _messageNotification(message) {
-        if (isURL(message)) {
-            const notification = this._notify(message, '点击打开链接');
-            this._bind(notification, e => window.open(message, '_blank', null, true));
-        } else {
-            const notification = this._notify(message, '点击复制文字');
-            this._bind(notification, e => this._copyText(message, notification));
-        }
-    }
-
-    _downloadNotification(message) {
-        const notification = this._notify(message, '点击保存文件');
-        if (!window.isDownloadSupported) return;
-        this._bind(notification, e => this._download(notification));
-    }
-
-    _download(notification) {
-        document.querySelector('x-dialog [download]').click();
-        notification.close();
-    }
-
-    _copyText(message, notification) {
-        notification.close();
-        if (!navigator.clipboard.writeText(message)) return;
-        this._notify('文字已复制到剪贴板');
-    }
-
-    _bind(notification, handler) {
-        if (notification.then) {
-            notification.then(e => serviceWorker.getNotifications().then(notifications => {
-                serviceWorker.addEventListener('notificationclick', handler);
-            }));
-        } else {
-            notification.onclick = handler;
-        }
-    }
-}
-
-
 class NetworkStatusUI {
 
     constructor() {
@@ -791,15 +702,3 @@ window.addEventListener('beforeinstallprompt', e => {
         return e.preventDefault();
     }
 });
-
-Notifications.PERMISSION_ERROR = `
-Notifications permission has been blocked
-as the user has dismissed the permission prompt several times.
-This can be reset in Page Info
-which can be accessed by clicking the lock icon next to the URL.`;
-
-// document.body.onclick = e => { // safari hack to fix audio
-//     document.body.onclick = null;
-//     if (!(/.*Version.*Safari.*/.test(navigator.userAgent))) return;
-//     blop.play();
-// }

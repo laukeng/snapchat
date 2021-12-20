@@ -40,6 +40,7 @@ const parser = require('ua-parser-js');
 const app = express();
 const port = 3001;
 const publicRun = process.argv[2];
+const nameGenerator = require('./name-generator.js');
 
 app.get('*', (req, res) => {
     const file = path.join(__dirname, 'public', req.url);
@@ -158,13 +159,13 @@ class SnapchatServer {
         let delCmd = message.text.match(/^\/del:(.+)/);
         if (delCmd) { //如果为删除指令
             if (delCmd[1] == 'all') {
-                for (const timeId in this._msgs[sender.room]) { //删除记录
+                for (const timeId in this._msgs[sender.room]) { //删除所有记录
                     if (this._msgs[sender.room][timeId].sender == sender.id) {
                         this._msgs[sender.room][timeId].text = '<span class="chat-room-msg-text-del">[此消息已被删除]</span>';
                     }
-                };
+                }
             } else {
-                for (const timeId in this._msgs[sender.room]) { //删除记录
+                for (const timeId in this._msgs[sender.room]) { //删除单条记录
                     if (timeId == delCmd[1] && sender.id == this._msgs[sender.room][timeId].sender) {
                         this._msgs[sender.room][timeId].text = '<span class="chat-room-msg-text-del">[此消息已被删除]</span>';
                         break;
@@ -347,7 +348,6 @@ class Peer {
         let match = request.url.match(/\/([^@]*)@/);
         if (match) displayName = decodeURIComponent(match[1]);
         if (!displayName) {
-            const nameGenerator = require('./nameGenerator.js');
             displayName = nameGenerator.getName(this.id);
         }
         this.name = {
@@ -395,4 +395,4 @@ class Peer {
     }
 }
 
-new SnapchatServer();
+const snapchatServer = new SnapchatServer();

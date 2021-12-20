@@ -24,11 +24,11 @@
       // ...then toggle the light mode class
       document.body.classList.toggle('light-theme');
       // ...but use .dark-theme if the .light-theme class is already on the body,
-      var theme = document.body.classList.contains('light-theme') ? 'light' : 'dark';
+      let theme = document.body.classList.contains('light-theme') ? 'light' : 'dark';
     } else {
       // Otherwise, let's do the same thing, but for .dark-theme
       document.body.classList.toggle('dark-theme');
-      var theme = document.body.classList.contains('dark-theme') ? 'dark' : 'light';
+      let theme = document.body.classList.contains('dark-theme') ? 'dark' : 'light';
     }
     // Finally, let's save the current preference to localStorage to keep using it
     localStorage.setItem('theme', theme);

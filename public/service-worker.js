@@ -1,5 +1,5 @@
-var CACHE_NAME = 'snapchat-cache-v2';
-var urlsToCache = [
+let CACHE_NAME = 'snapchat-cache-v2';
+let urlsToCache = [
   'index.html',
   './',
   'styles.css',
