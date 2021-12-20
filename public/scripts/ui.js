@@ -81,7 +81,7 @@ Events.on('display-name', e => {
     nickName = decodeURIComponent(msg.dispName);
     myId = msg.peerId;
     $('nameInput').value = nickName;
-    let msgHtml = '<div class="chat-room-tip">-- ' + nickName + ' 欢迎您加入本群 --</div>';
+    let msgHtml = `<div class="chat-room-tip">-- ${nickName} 欢迎您加入本群 --</div>`;
     $('chat-room-content').appendHTML(msgHtml);
     $('chat-room-box').scrollTop = $('chat-room-box').scrollHeight;
 });
@@ -91,17 +91,25 @@ Events.on('history-msgs', e => {
     let msgHtml;
     for (let time in msgs) {
         let msg = msgs[time];
-        let divClass = msg.sender == myId ? 'me' : 'other';
+        let divClass = msg.sender == myId ? 'chat-room-me ' : 'chat-room-other ';
+        divClass += msg.sender;
         let delBtnHtml = '';
         if (msg.sender == myId) {
-            delBtnHtml = '<div class="chat-room-msg-btn"><a class="icon-button" title="删除消息" onclick="delMsg(' + time + ')">' +
-                '<svg class="icon"><use xlink:href="#icon-trash"></use></svg></a></div>'
+            delBtnHtml = `
+                <div class="chat-room-msg-btn">
+                    <a class="icon-button" title="删除消息" onclick="delMsg(${time})">
+                        <svg class="icon"><use xlink:href="#icon-trash"></use></svg>
+                    </a>
+                </div>`;
         };
-        msgHtml = '<div id="' + time + '" class="chat-room-' + divClass + ' ' + msg.sender + '">' + delBtnHtml + '<div class="chat-room-msg">' +
-            '<div class="chat-room-msg-time">' + new Date(parseInt(time)).format("yyyy-MM-dd hh:mm:ss") + '</div>' +
-            '<span class="chat-room-msg-name">' + msg.name + ' : </span>' +
-            '<span class="chat-room-msg-text">' + replaceURLWithHTMLLinks(msg.text) + '</span>' +
-            '</div></div>';
+        msgHtml = `
+            <div id="${time}" class="${divClass}">${delBtnHtml}
+                <div class="chat-room-msg">
+                    <div class="chat-room-msg-time">${new Date(parseInt(time)).format("yyyy-MM-dd hh:mm:ss")}</div>
+                    <span class="chat-room-msg-name">${msg.name} : </span>
+                    <span class="chat-room-msg-text">${replaceURLWithHTMLLinks(msg.text)}</span>
+                </div>
+            </div>`;
         $('chat-room-content').appendHTML(msgHtml);
     };
     $('chat-room-box').scrollTop = $('chat-room-box').scrollHeight;
@@ -140,7 +148,7 @@ Events.on('msg-received', e => {
 Events.on('show-msg', e => { //当接收到服务器群发的一条消息
     const msg = e.detail;
     let delCmd = msg.text.match(/^\/del:(.+)/);
-    if (delCmd) {
+    if (delCmd) { //如果接收到的是删除指令
         if (delCmd[1] == 'all') {
             delMsgs(msg.sender);
         } else {
@@ -148,11 +156,14 @@ Events.on('show-msg', e => { //当接收到服务器群发的一条消息
         };
         return;
     };
-    let msgHtml = '<div id="' + msg.time + '" class="chat-room-other ' + msg.sender + '"><div class="chat-room-msg">' +
-        '<div class="chat-room-msg-time">' + new Date(parseInt(msg.time)).format("yyyy-MM-dd hh:mm:ss") + '</div>' +
-        '<span class="chat-room-msg-name">' + msg.name + ' : </span>' +
-        '<span class="chat-room-msg-text">' + replaceURLWithHTMLLinks(msg.text) + '</span>' +
-        '</div></div>';
+    let msgHtml = `
+        <div id="${msg.time}" class="chat-room-other ${msg.sender}">
+            <div class="chat-room-msg">
+                <div class="chat-room-msg-time">${new Date(parseInt(msg.time)).format("yyyy-MM-dd hh:mm:ss")}</div>
+                <span class="chat-room-msg-name">${msg.name} : </span>
+                <span class="chat-room-msg-text">${replaceURLWithHTMLLinks(msg.text)}</span>
+            </div>
+        </div>`;
     $('chat-room-content').appendHTML(msgHtml);
     $('chat-room-box').scrollTop = $('chat-room-box').scrollHeight;
 });
@@ -189,13 +200,19 @@ function delMsg(msgId) {
 }
 
 function showMyMsg(text, id) { //显示自己发出的消息
-    let delBtnHtml = '<div class="chat-room-msg-btn"><a class="icon-button" title="删除消息">' +
-        '<svg class="icon"><use xlink:href="#icon-trash"></use></svg></a></div>';
-    let msgHtml = '<div id="' + id + '" class="chat-room-me ' + myId + '">' + delBtnHtml + '<div class="chat-room-msg">' +
-        '<div class="chat-room-msg-time">' + new Date(parseInt(id)).format("yyyy-MM-dd hh:mm:ss") + '</div>' +
-        '<span class="chat-room-msg-name">' + nickName + ' : </span>' +
-        '<span class="chat-room-msg-text">' + replaceURLWithHTMLLinks(text) + '</span>' +
-        '</div></div>';
+    let msgHtml = `
+        <div id="${id}" class="chat-room-me ${myId}">
+            <div class="chat-room-msg-btn">
+                <a class="icon-button" title="删除消息">' +
+                    <svg class="icon"><use xlink:href="#icon-trash"></use></svg>
+                </a>
+            </div>
+            <div class="chat-room-msg">
+                <div class="chat-room-msg-time">${new Date(parseInt(id)).format("yyyy-MM-dd hh:mm:ss")}</div>
+                <span class="chat-room-msg-name">${nickName} : </span>
+                <span class="chat-room-msg-text">${replaceURLWithHTMLLinks(text)}</span>
+            </div>
+        </div>`;
     $('chat-room-content').appendHTML(msgHtml);
     $('chat-room-box').scrollTop = $('chat-room-box').scrollHeight;
     $(id).querySelector('.chat-room-msg').style.background = '#ee9911';
