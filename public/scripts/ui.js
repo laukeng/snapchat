@@ -81,9 +81,7 @@ Events.on('display-name', e => {
     nickName = decodeURIComponent(msg.dispName);
     myId = msg.peerId;
     $('nameInput').value = nickName;
-    let msgHtml = `<div class="chat-room-tip">-- ${nickName} 欢迎您加入本群 --</div>`;
-    $('chat-room-content').appendHTML(msgHtml);
-    $('chat-room-box').scrollTop = $('chat-room-box').scrollHeight;
+    Events.fire('notify-user', nickName + ' 欢迎您加入本群');
 });
 
 Events.on('history-msgs', e => {
@@ -122,18 +120,14 @@ Events.on('peers', e => {
 
 Events.on('peer-joined', e => {
     const msg = e.detail;
-    let msgHtml = '<div class="chat-room-tip">-- ' + decodeURIComponent(msg.peer.name.displayName) + ' 加入了群聊 --</div>';
-    $('chat-room-content').appendHTML(msgHtml);
-    $('chat-room-box').scrollTop = $('chat-room-box').scrollHeight;
-    $('room-title').innerText = roomName + '(' + (msg.count + 1) + ')';
+    $('room-title').innerText = roomName + '(' + (msg.count) + ')';
+    Events.fire('notify-user', decodeURIComponent(msg.peer.name.displayName) + ' 加入了群聊');
 });
 
 Events.on('peer-left', e => {
     const msg = e.detail;
-    let msgHtml = '<div class="chat-room-tip">-- ' + decodeURIComponent(msg.peerName) + ' 退出了群聊 --</div>';
-    $('chat-room-content').appendHTML(msgHtml);
-    $('chat-room-box').scrollTop = $('chat-room-box').scrollHeight;
     $('room-title').innerText = roomName + '(' + msg.count + ')';
+    Events.fire('notify-user', decodeURIComponent(msg.peerName) + ' 退出了群聊');
 });
 
 Events.on('msg-received', e => {
@@ -652,13 +646,15 @@ class ReceiveTextDialog extends Dialog {
 class Toast extends Dialog {
     constructor() {
         super('toast');
+        this._timerID = {};
         Events.on('notify-user', e => this._onNotfiy(e.detail));
     }
 
     _onNotfiy(message) {
         this.$el.textContent = message;
         this.show();
-        setTimeout(_ => this.hide(), 3000);
+        clearTimeout(this._timerID);
+        this._timerID = setTimeout(_ => this.hide(), 3000);
     }
 }
 

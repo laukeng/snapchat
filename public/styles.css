@@ -705,7 +705,7 @@ button::-moz-focus-inner {
 x-toast {
     position: absolute;
     min-height: 48px;
-    bottom: 24px;
+    bottom: 80px;
     width: 100%;
     max-width: 344px;
     background-color: #323232;
