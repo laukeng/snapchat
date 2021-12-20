@@ -1,6 +1,5 @@
 window.URL = window.URL || window.webkitURL;
 window.isRtcSupported = !!(window.RTCPeerConnection || window.mozRTCPeerConnection || window.webkitRTCPeerConnection);
-let peersManager;
 
 class ServerConnection {
 
@@ -12,7 +11,7 @@ class ServerConnection {
         Events.on('beforeunload', e => this._disconnect());
         Events.on('pagehide', e => this._disconnect());
         document.addEventListener('visibilitychange', e => this._onVisibilityChange());
-        peersManager = new PeersManager(this);
+        const peersManager = new PeersManager(this);
     }
 
     _connect() {

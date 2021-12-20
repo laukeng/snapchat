@@ -370,10 +370,9 @@ class Peer {
 
     // return uuid of form xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
     static uuid() {
-        let uuid = '',
-            ii;
-        for (ii = 0; ii < 32; ii += 1) {
-            switch (ii) {
+        let uuid = '';
+        for (let i = 0; i < 32; i += 1) {
+            switch (i) {
                 case 8:
                 case 20:
                     uuid += '-';

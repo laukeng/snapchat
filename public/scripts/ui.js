@@ -4,10 +4,10 @@ const isURL = text => /^((https?:\/\/|www)[^\s]+)/g.test(text.toLowerCase());
 window.isDownloadSupported = (typeof document.createElement('a').download !== 'undefined');
 window.isProductionEnvironment = !window.location.host.startsWith('localhost');
 window.iOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-let server;
-let roomName;
-let nickName;
-let myId;
+let server = {};
+let roomName = '';
+let nickName = '';
+let myId = '';
 
 Date.prototype.format = function (fmt) {
     let o = {
@@ -202,7 +202,7 @@ function showMyMsg(text, id) { //显示自己发出的消息
 }
 
 function pubMsg() {
-    if ($('pub-msg-text').innerText != '') {
+    if ($('pub-msg-text').innerText) {
         if (server) {
             let timeStamp = Date.now();
             let success = server.send({
