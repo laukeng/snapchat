@@ -98,7 +98,7 @@ Events.on('history-msgs', e => {
                 '<svg class="icon"><use xlink:href="#icon-trash"></use></svg></a></div>'
         };
         msgHtml = '<div id="' + time + '" class="chat-room-' + divClass + ' ' + msg.sender + '">' + delBtnHtml + '<div class="chat-room-msg">' +
-            '<span class="chat-room-msg-time">' + new Date(parseInt(time)).format("yyyy-MM-dd hh:mm:ss") + '</span></br>' +
+            '<div class="chat-room-msg-time">' + new Date(parseInt(time)).format("yyyy-MM-dd hh:mm:ss") + '</div>' +
             '<span class="chat-room-msg-name">' + msg.name + ' : </span>' +
             '<span class="chat-room-msg-text">' + replaceURLWithHTMLLinks(msg.text) + '</span>' +
             '</div></div>';
@@ -149,7 +149,7 @@ Events.on('show-msg', e => { //当接收到服务器群发的一条消息
         return;
     };
     let msgHtml = '<div id="' + msg.time + '" class="chat-room-other ' + msg.sender + '"><div class="chat-room-msg">' +
-        '<span class="chat-room-msg-time">' + new Date(parseInt(msg.time)).format("yyyy-MM-dd hh:mm:ss") + '</span></br>' +
+        '<div class="chat-room-msg-time">' + new Date(parseInt(msg.time)).format("yyyy-MM-dd hh:mm:ss") + '</div>' +
         '<span class="chat-room-msg-name">' + msg.name + ' : </span>' +
         '<span class="chat-room-msg-text">' + replaceURLWithHTMLLinks(msg.text) + '</span>' +
         '</div></div>';
@@ -192,7 +192,7 @@ function showMyMsg(text, id) { //显示自己发出的消息
     let delBtnHtml = '<div class="chat-room-msg-btn"><a class="icon-button" title="删除消息">' +
         '<svg class="icon"><use xlink:href="#icon-trash"></use></svg></a></div>';
     let msgHtml = '<div id="' + id + '" class="chat-room-me ' + myId + '">' + delBtnHtml + '<div class="chat-room-msg">' +
-        '<span class="chat-room-msg-time">' + new Date(parseInt(id)).format("yyyy-MM-dd hh:mm:ss") + '</span></br>' +
+        '<div class="chat-room-msg-time">' + new Date(parseInt(id)).format("yyyy-MM-dd hh:mm:ss") + '</div>' +
         '<span class="chat-room-msg-name">' + nickName + ' : </span>' +
         '<span class="chat-room-msg-text">' + replaceURLWithHTMLLinks(text) + '</span>' +
         '</div></div>';
